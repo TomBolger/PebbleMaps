@@ -1,6 +1,12 @@
 // Pebble Maps - ordered, retrying AppMessage queue
+// Two lanes: small replies (lists, place cards, pages, toasts) go ahead of bulk traffic
+// (map pieces, markers, voice), so screens fill in while a map is still streaming.
+// Order is kept within each lane.
 var queue = [];
 var busy = false;
+var BULK = /^(map:|mk|voice|nav)/;   // nav updates stay in step with their map pictures
+
+function isBulk(item) { return !!(item.tag && BULK.test(item.tag)); }
 
 function pump() {
   if (busy || !queue.length) return;
@@ -14,17 +20,26 @@ function pump() {
   }, function (e) {
     busy = false;
     item.tries = (item.tries || 0) + 1;
-    if (item.tries >= 4) {
+    // replies the user is waiting for get more patience than map pieces (the watch may be busy drawing)
+    if (item.tries >= (isBulk(item) ? 4 : 10)) {
       queue.shift();
       if (item.done) item.done(false);
     }
-    setTimeout(pump, 150 * item.tries);
+    setTimeout(pump, Math.min(2000, 150 * item.tries));
   });
 }
 
 // tag: optional string so stale messages can be dropped (e.g. old map images)
 function send(dict, tag, done) {
-  queue.push({ dict: dict, tag: tag || null, done: done });
+  var item = { dict: dict, tag: tag || null, done: done };
+  if (!isBulk(item)) {
+    // after the message in flight and any other replies, but before bulk traffic
+    var i = busy ? 1 : 0;
+    while (i < queue.length && !isBulk(queue[i])) i++;
+    queue.splice(i, 0, item);
+  } else {
+    queue.push(item);
+  }
   pump();
 }
 

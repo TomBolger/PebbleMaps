@@ -920,9 +920,9 @@ static void dots_tick(void *ctx) {
   DotsData *d = layer_get_data(layer);
   d->timer = NULL;
   if (!d->running) return;
-  d->phase = (d->phase + 1) % 36;
+  d->phase = (d->phase + 2) % 36;   // 9 frames a second: smooth enough, and leaves the watch free for messages
   layer_mark_dirty(layer);
-  d->timer = app_timer_register(55, dots_tick, layer);
+  d->timer = app_timer_register(110, dots_tick, layer);
 }
 
 static void dots_update(Layer *layer, GContext *ctx) {
@@ -965,7 +965,7 @@ void dots_layer_set_running(Layer *layer, bool running) {
   layer_set_hidden(layer, !running);
   if (running == d->running) return;
   d->running = running;
-  if (running && !d->timer) d->timer = app_timer_register(55, dots_tick, layer);
+  if (running && !d->timer) d->timer = app_timer_register(110, dots_tick, layer);
   if (!running && d->timer) {
     app_timer_cancel(d->timer);
     d->timer = NULL;

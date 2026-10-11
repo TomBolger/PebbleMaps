@@ -83,15 +83,13 @@ static void fill_modes(ListWin *lw) {
 static void request(ListWin *lw) {
   switch (lw->kind) {
     case LW_FAVS:
-      comm_cmd(CMD_FAV_LIST);
-      lw->loaded = false;
+      comm_cmd(CMD_FAV_LIST);   // the current list stays on screen until the new one arrives
       break;
     case LW_MODES:
       comm_cmd(CMD_MODE_TIMES);
       break;
     case LW_STEPS:
       comm_cmd(CMD_STEPS);
-      lw->loaded = false;
       break;
     default:
       break;

@@ -36,7 +36,7 @@ function phone() {
     './image': {}, './google': google, './settings': { get: () => S, findFavorite: () => -1, favorites: () => [] },
     './vendor/clay': Clay, './clay-components': [], './clay-config': { config: () => [] }, './dev': dev,
     'jpeg-js/lib/decoder': () => {}, './msg': { send: d => messages.push(d), drop() {}, pending: () => 0 },
-    './tiles': { get() {}, styleKey: () => '' }, './voice': { onProblem() {}, cancel() {} }
+    './tiles': { get() {}, styleKey: () => '', setIdleCheck() {}, cancelPrefetch() {} }, './voice': { onProblem() {}, cancel() {} }
   };
   const context = {
     module: { exports: {} }, require: n => mocks[n] || require(path.resolve(root, n)),
@@ -163,4 +163,36 @@ test('a fix without a usable timestamp or with poor accuracy still shows where y
   let loc2; q.context.getLocation(20000, (err, l) => { loc2 = l; });
   q.fixes[0].ok({ timestamp: Math.floor(Date.now() / 1000), coords: { latitude: 1, longitude: 2, accuracy: 20 } });
   assert.deepEqual(Array.from(loc2), [1, 2]);
+});
+
+test('map pieces are PackBits-packed rows that unpack exactly, within the message size', () => {
+  const p = phone();
+  function unpack(data, stride, rows) {
+    const out = []; let s = 0;
+    while (s < data.length) {
+      const n = data[s++]; const run = n > 128; let cnt = run ? 257 - n : n + 1;
+      if (run) { const v = data[s++]; while (cnt--) out.push(v); } else { while (cnt--) out.push(data[s++]); }
+    }
+    return out;
+  }
+  let seed = 7; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  for (const flat of [0.0, 0.5, 0.95]) {
+    const w = 200, h = 60, stride = 100, data = [];
+    let v = 0;
+    for (let i = 0; i < stride * h; i++) { if (rnd() > flat) v = Math.floor(rnd() * 256); data.push(v); }
+    const img = { format: 1, stride, width: w, height: h, data };
+    const chunks = p.context.chunksFor(img, [{ x0: 20, x1: 180, y0: 3, y1: 57 }]);
+    const room = Math.max(64, p.context.watch.inbox - 90);
+    for (const ch of chunks) {
+      assert.ok(ch.data.length <= room);
+      const rows = unpack(ch.data);
+      assert.equal(rows.length % ch.stride, 0);
+      for (let i = 0; i < rows.length; i++) {
+        const y = ch.y + Math.floor(i / ch.stride), x = ch.xb + (i % ch.stride);
+        assert.equal(rows[i], data[y * stride + x]);
+      }
+    }
+    const total = chunks.reduce((a, c) => a + c.data.length / c.stride, 0);
+    assert.ok(total > 0);
+  }
 });

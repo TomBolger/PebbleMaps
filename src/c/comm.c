@@ -128,7 +128,7 @@ static void outbox_sent(DictionaryIterator *it, void *ctx) {
 
 static void outbox_failed(DictionaryIterator *it, AppMessageResult reason, void *ctx) {
   s_sending = false;
-  if (++s_retries > 3) {
+  if (++s_retries > 6) {
     // give up on this message
     s_retries = 0;
     if (s_q_count) {

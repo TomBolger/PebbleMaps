@@ -16,6 +16,7 @@ var clayConfig = require('./clay-config');
 var clayComponents = require('./clay-components');
 var dev = require('./dev');
 var tiles = require('./tiles');
+tiles.setIdleCheck(function () { return msg.pending() === 0; });
 var voice = require('./voice');
 var jpeg = require('jpeg-js/lib/decoder');
 
@@ -378,10 +379,26 @@ function centerOutRects(w, h, rowsPer) {
   return rects;
 }
 
-// Cut rects into AppMessage-sized pieces: { y, xb, stride, data }
+// PackBits: n (0..127) = n+1 bytes follow as they are; n (129..255) = repeat the next byte 257-n times.
+// Map pictures are mostly flat color, so this usually cuts the bytes to send by 3x or more.
+function packRow(src, off, n, out) {
+  var i = 0;
+  while (i < n) {
+    var v = src[off + i], j = i + 1;
+    while (j < n && j - i < 128 && src[off + j] === v) j++;
+    if (j - i >= 2) { out.push(257 - (j - i), v); i = j; continue; }
+    var k = i + 1;
+    while (k < n && k - i < 128 && !(k + 2 < n && src[off + k] === src[off + k + 1] && src[off + k] === src[off + k + 2])) k++;
+    out.push(k - i - 1);
+    for (var q = i; q < k; q++) out.push(src[off + q]);
+    i = k;
+  }
+}
+
+// Cut rects into AppMessage-sized pieces of packed rows: { y, xb, stride, data }
 function chunksFor(img, rects) {
   var out = [];
-  var room = Math.max(64, watch.inbox - 110);
+  var room = Math.max(64, watch.inbox - 90);
   rects.forEach(function (r) {
     var xb0, xb1;
     if (img.format === 1) { xb0 = r.x0 >> 1; xb1 = (r.x1 + 1) >> 1; }
@@ -389,18 +406,31 @@ function chunksFor(img, rects) {
     xb1 = Math.min(xb1, img.stride);
     var bw = xb1 - xb0;
     if (bw <= 0 || r.y1 <= r.y0) return;
-    var rows = Math.max(1, Math.floor(room / bw));
-    for (var y = r.y0; y < r.y1; y += rows) {
-      var n = Math.min(rows, r.y1 - y);
-      var data = new Array(n * bw);
-      for (var i = 0; i < n; i++) {
-        var so = (y + i) * img.stride + xb0;
-        for (var j = 0; j < bw; j++) data[i * bw + j] = img.data[so + j];
+    var cur = null;
+    for (var y = r.y0; y < r.y1; y++) {
+      var row = [];
+      packRow(img.data, y * img.stride + xb0, bw, row);
+      if (!cur || cur.data.length + row.length > room) {
+        cur = { y: y, xb: xb0, stride: bw, data: [] };
+        out.push(cur);
       }
-      out.push({ y: y, xb: xb0, stride: bw, data: data });
+      for (var i = 0; i < row.length; i++) cur.data.push(row[i]);
     }
   });
   return out;
+}
+
+// Screen first (from the middle outward), then the spare margin around it
+function screenFirstRects(w, h, sw, sh, rowsPer) {
+  if (!sw || !sh || (sw >= w && sh >= h)) return centerOutRects(w, h, rowsPer);
+  sw = Math.min(sw, w); sh = Math.min(sh, h);
+  var x0 = (w - sw) >> 1, y0 = (h - sh) >> 1, x1 = x0 + sw, y1 = y0 + sh;
+  var r = centerOutRects(sw, sh, rowsPer).map(function (q) { return { x0: x0, x1: x1, y0: q.y0 + y0, y1: q.y1 + y0 }; });
+  if (y0 > 0) r.push({ x0: 0, x1: w, y0: 0, y1: y0 });
+  if (y1 < h) r.push({ x0: 0, x1: w, y0: y1, y1: h });
+  if (x0 > 0) r.push({ x0: 0, x1: x0, y0: y0, y1: y1 });
+  if (x1 < w) r.push({ x0: x1, x1: w, y0: y0, y1: y1 });
+  return r;
 }
 
 // Send a picture. plan: from planImage; info: { zoom, heading, key }
@@ -413,7 +443,7 @@ function pushImage(seq, img, plan, info, markers, opts) {
   if (ref && prev.valid && prev.key === info.key) rects = stripRects(plan.v, img.width, img.height);
   if (!rects) {
     msg.drop('map:');   // a whole new picture replaces anything still waiting
-    rects = centerOutRects(img.width, img.height, Math.max(1, Math.floor((watch.inbox - 110) / img.stride)));
+    rects = screenFirstRects(img.width, img.height, opts.sw, opts.sh, 16);
   }
   imgCounter = imgCounter % 30000 + 1;
   var cur = { id: imgCounter, c: plan.c, zoom: info.zoom, heading: info.heading, w: img.width, h: img.height,
@@ -467,6 +497,11 @@ function streamMap(seq, view, markers, done, quiet) {
   live.lastRender = Date.now();
   var o = { c: plan.c, center: view.center, zoom: view.zoom, w: os[0], h: os[1], heading: hd,
             style: mapStyle(), format: watch.fmt, path: view.path, markers: view.gmarkers };
+  // walking or driving with the home map: fetch pictures centered further along the way
+  if (views.home && views.home.seq === seq && live.on && live.moving && live.heading !== undefined) {
+    var ha = geo.rad(live.heading);
+    o.ahead = [Math.sin(ha), -Math.cos(ha)];
+  }
   refreshFn = function () { if (currentMapSeq === seq && !navState) streamMap(seq, view, markers, null, true); };
   tiles.get(o, function (err, img) {
     if (token !== renderToken || seq !== currentMapSeq) { if (done) done({ stale: true }); return; }
@@ -483,10 +518,11 @@ function streamMap(seq, view, markers, done, quiet) {
     }
     mapWorked();
     pushImage(seq, img, plan, { zoom: view.zoom, heading: hd, key: tiles.styleKey(o) }, markers, {
-      ack: true,
-      onBegin: function () { if (done) done(null); }
+      ack: true, sw: view.w, sh: view.h,
+      onBegin: function () { if (done) done(null); },
+      // get the next pictures ready once this one is on the watch
+      onDone: function () { if (!S.economical && token === renderToken) tiles.prefetchAround(o, true); }
     });
-    if (!S.economical) tiles.prefetchAround(o, true);
   });
 }
 
@@ -1069,6 +1105,8 @@ function prefs() {
   return { imperial: S.imperial, avoidTolls: S.avoidTolls, avoidHighways: S.avoidHighways, avoidFerries: S.avoidFerries };
 }
 
+var modeTimes = null;   // last travel times: { key, time, items }
+
 function onModeTimes() {
   withDest(function (err, d) {
     if (err) return sendError(err);
@@ -1076,12 +1114,23 @@ function onModeTimes() {
     if (!S.allModeTimes || S.economical) return sendList(P.LIST.MODES, items);
     getLocation(60000, function (e1, loc) {
       if (e1) return sendList(P.LIST.MODES, items);
-      var pending = 4;
+      // same place, about the same spot, in the last two minutes: show those times right away
+      var ck = [d.lat.toFixed(5), d.lng.toFixed(5), loc[0].toFixed(3), loc[1].toFixed(3), S.imperial].join(',');
+      if (modeTimes && modeTimes.key === ck && Date.now() - modeTimes.time < 120000) return sendList(P.LIST.MODES, modeTimes.items);
+      var pending = 4, first = true;
+      items.forEach(function (it) { it.sub = 'Checking...'; });
       [0, 1, 2, 3].forEach(function (mode) {
         google.computeRoute(loc, d, mode, prefs(), false, function (e2, r) {
+          if (dest !== d) return;
           if (e2 || !r) items[mode].sub = e2 && e2.code === P.ERR.NO_RESULTS ? 'Not available here' : 'Unavailable';
           else items[mode].sub = fmt.duration(fmt.seconds(r.duration)) + ' · ' + fmt.distance(r.distanceMeters, S.imperial);
-          if (--pending === 0) sendList(P.LIST.MODES, items);
+          if (--pending === 0) {
+            modeTimes = { key: ck, time: Date.now(), items: items };
+            sendList(P.LIST.MODES, items);
+          } else if (first && pending <= 2) {
+            first = false;   // half the answers in: show them, the rest fill in when ready
+            sendList(P.LIST.MODES, items);
+          }
         });
       });
     });
@@ -1091,7 +1140,7 @@ function onModeTimes() {
 function getRoute(mode, force, cb) {
   withDest(function (err, d) {
     if (err) return cb(err);
-    getLocation(15000, function (e1, loc) {
+    getLocation(60000, function (e1, loc) {
       if (dest !== d) return cb({ stale: true });
       if (e1) return cb(e1);
       var key = [d.lat.toFixed(5), d.lng.toFixed(5), mode].join(',');
@@ -1309,6 +1358,7 @@ function navRender(force) {
     if (err) { navState.streaming = false; retryLater(err); return; }
     mapWorked();
     pushImage(seq, img, plan, { zoom: t.zoom, heading: heading, key: tiles.styleKey(o) }, null, {
+      sw: st.w, sh: st.h,
       onBegin: function () {
         navState.shown = view;
         if (navigator_ && navigator_.lastDict) send(navAugment(JSON.parse(JSON.stringify(navigator_.lastDict))), 'nav');
@@ -1490,8 +1540,29 @@ function domainOf(u) {
   return m ? m[1] : '';
 }
 
+// The first photo starts downloading as soon as the place details arrive (the watch asks for
+// it a moment later); the raw picture is kept by name so the watch's request can use it.
+var rawPhotos = {};
+var rawOrder = [];
+function photoBytes(name, cb) {
+  var r = rawPhotos[name];
+  if (r && r.done) return cb(r.err, r.bytes);
+  if (r) { r.waiters.push(cb); return; }
+  r = rawPhotos[name] = { waiters: [cb] };
+  rawOrder.push(name);
+  while (rawOrder.length > 4) delete rawPhotos[rawOrder.shift()];
+  var side = Math.min(1200, Math.max(buf.w, buf.h, watch.w) * 3);
+  google.placePhoto(name, side, side, function (err, bytes) {
+    r.done = true; r.err = err; r.bytes = bytes;
+    if (err) { delete rawPhotos[name]; }
+    var ws = r.waiters; r.waiters = [];
+    ws.forEach(function (f) { f(err, bytes); });
+  });
+}
+
 function sendInfo(inf) {
   info = inf;
+  if (!watch.lowmem && inf.photos && inf.photos[0]) photoBytes(inf.photos[0].name, function () {});
   var ol = openLine(inf);
   var meta = [];
   if (inf.price) meta.push(inf.price);
@@ -1600,7 +1671,7 @@ function onPhoto(p) {
     pushImage(seq, img, { c: [0, 0], ref: 0, v: [0, 0] }, { zoom: 0, heading: 0, key: 'photo' }, null);
   }
   for (var i = 0; i < photoCache.length; i++) if (photoCache[i].key === key) return push(photoCache[i].img);
-  google.placePhoto(ph.name, Math.min(1200, w * 3), Math.min(1200, h * 3), function (err, bytes) {
+  photoBytes(ph.name, function (err, bytes) {
     if (token !== renderToken) return;
     if (err) {
       console.log('photo: ' + (err.text || err.title));
@@ -1711,6 +1782,12 @@ function onSaveHere() {
 function onMessage(e) {
   var p = e.payload || {};
   var cmd = p.cmd;
+  if (cmd === CMD.HOME_MAP || cmd === CMD.RESULTS_MAP || cmd === CMD.PLACE_MAP || cmd === CMD.ROUTE || cmd === CMD.NAV_START) {
+    // the watch has moved on to a new picture: pieces of the old one would only hold it up
+    msg.drop('map:');
+    msg.drop('mk');
+    tiles.cancelPrefetch();
+  }
   try {
     switch (cmd) {
       case CMD.HELLO:

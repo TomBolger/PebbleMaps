@@ -338,7 +338,16 @@ void map_adjust(int action, int dx, int dy) {
   notify();
 }
 
+// Faster Bluetooth while a picture is coming in; back to normal 1.5 s after the last piece
+static AppTimer *s_fast;
+static void fast_off(void *c) { s_fast = NULL; app_comm_set_sniff_interval(SNIFF_INTERVAL_NORMAL); }
+static void comm_fast(void) {
+  app_comm_set_sniff_interval(SNIFF_INTERVAL_REDUCED);
+  if (!s_fast || !app_timer_reschedule(s_fast, 1500)) s_fast = app_timer_register(1500, fast_off, NULL);
+}
+
 int map_request(int cmd, int w, int h, int idx, int mode) {
+  comm_fast();
   map_release();
   g_map.n_markers = 0;
   s_npans = 0;
@@ -438,6 +447,7 @@ static void begin(DictionaryIterator *it) {
 void map_handle(int cmd, DictionaryIterator *it) {
   int seq = tuple_int(it, MESSAGE_KEY_seq, -1);
   if (seq != g_map.seq) return;  // another screen's picture
+  if (cmd != CMD_MARKERS) comm_fast();
   if (cmd == CMD_MAP_BEGIN) {
     begin(it);
     notify();
@@ -451,9 +461,20 @@ void map_handle(int cmd, DictionaryIterator *it) {
     int stride = tuple_int(it, MESSAGE_KEY_stride, s_bpr);
     if (stride <= 0 || xb < 0 || xb >= s_bpr || y < 0) return;
     int copy = stride < s_bpr - xb ? stride : s_bpr - xb;
-    const uint8_t *src = dt->value->data;
-    for (int p = 0; p + stride <= dt->length && y < g_map.h; p += stride, y++) {
-      memcpy(row_ptr(y) + xb, src + p, copy);
+    // rows packed with PackBits: n < 128 -> n+1 bytes as they are, n > 128 -> next byte 257-n times
+    const uint8_t *s = dt->value->data, *e = s + dt->length;
+    int col = 0;
+    while (s < e && y < g_map.h) {
+      int n = *s++;
+      bool run = n > 128;
+      int cnt = run ? 257 - n : n + 1;
+      uint8_t v = 0;
+      if (run) { if (s >= e) break; v = *s++; }
+      while (cnt-- > 0 && y < g_map.h) {
+        if (!run) { if (s >= e) break; v = *s++; }
+        if (col < copy) row_ptr(y)[xb + col] = v;
+        if (++col == stride) { col = 0; y++; }
+      }
     }
     g_map.complete = true;
     notify();

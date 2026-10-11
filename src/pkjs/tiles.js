@@ -137,8 +137,17 @@ function get(o, cb) {
 }
 
 // --- Background prefetch -----------------------------------------------------
+// Prefetching waits while the watch is still receiving (decoding a picture blocks the phone's
+// only thread, which would stall the Bluetooth transfer)
+var isIdle = function () { return true; };
+var idleTimer = null;
+
 function pumpPrefetch() {
   if (prefetching || !prefetchQueue.length) return;
+  if (!isIdle()) {
+    if (!idleTimer) idleTimer = setTimeout(function () { idleTimer = null; pumpPrefetch(); }, 500);
+    return;
+  }
   var job = prefetchQueue.shift();
   if (findTile(job.key, job.c, job.w, job.h, job.rotated)) return pumpPrefetch();
   prefetching = true;
@@ -148,13 +157,14 @@ function pumpPrefetch() {
   });
 }
 
-function queue(o, zoom, c) {
+// w, h: the area the new picture must cover (bigger than the view = "get the next one ready")
+function queue(o, zoom, c, w, h) {
   var oo = {};
   Object.keys(o).forEach(function (k) { oo[k] = o[k]; });
   oo.zoom = zoom;
   oo.c = c;
   var key = styleKey(oo);
-  prefetchQueue.push({ o: oo, key: key, c: c, w: o.w, h: o.h, rotated: !!o.heading });
+  prefetchQueue.push({ o: oo, key: key, c: c, w: w || o.w, h: h || o.h, rotated: !!o.heading });
 }
 
 // After showing view o: get the next picture ready in the direction the user is
@@ -167,7 +177,16 @@ function prefetchAround(o, withZoom) {
   if (t) {
     // if one more pan step (a third of the view) would leave this picture, prefetch around the view
     var step = Math.max(o.w, o.h) * 0.6;
-    if (!covers(t, c, o.w + step, o.h + step, !!o.heading)) queue(o, o.zoom, c);
+    if (!covers(t, c, o.w + step, o.h + step, !!o.heading)) {
+      // the next picture: centered on the view, or further along when moving (o.ahead)
+      var nc = c;
+      if (o.ahead && !dev.snapTiles) {
+        var len = Math.sqrt(o.ahead[0] * o.ahead[0] + o.ahead[1] * o.ahead[1]) || 1;
+        var k = (SIZE / 2 - Math.max(o.w, o.h)) * 0.6 / len;
+        if (k > 0) nc = [c[0] + o.ahead[0] * k, c[1] + o.ahead[1] * k];
+      }
+      queue(o, o.zoom, nc, o.w + step, o.h + step);
+    }
   }
   if (withZoom) {
     // zooming out first: its picture also fills the edges when the watch shrinks the view
@@ -182,4 +201,7 @@ function clear() {
   prefetchQueue = [];
 }
 
-module.exports = { get: get, styleKey: styleKey, prefetchAround: prefetchAround, clear: clear, SIZE: SIZE };
+function cancelPrefetch() { prefetchQueue = []; }
+
+module.exports = { get: get, styleKey: styleKey, prefetchAround: prefetchAround, clear: clear, SIZE: SIZE,
+  cancelPrefetch: cancelPrefetch, setIdleCheck: function (fn) { isIdle = fn; } };
