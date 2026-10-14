@@ -399,7 +399,8 @@ function packRow(src, off, n, out) {
 // Cut rects into AppMessage-sized pieces of packed rows: { y, xb, stride, data }
 function chunksFor(img, rects) {
   var out = [];
-  var room = Math.max(64, watch.inbox - 90);
+  // keep well under the watch's inbox: a piece that doesn't fit is thrown away by the watch
+  var room = Math.max(64, watch.inbox - 160);
   rects.forEach(function (r, ri) {
     var xb0, xb1;
     if (img.format === 1) { xb0 = r.x0 >> 1; xb1 = (r.x1 + 1) >> 1; }

@@ -444,6 +444,13 @@ static void begin(DictionaryIterator *it) {
   if (dict_find(it, MESSAGE_KEY_ack)) map_apply_ack(tuple_int(it, MESSAGE_KEY_ack, 0));
 }
 
+// If the "screen is complete" piece never arrives, show what's there after 2 s
+static AppTimer *s_show;
+static void show_now(void *c) {
+  s_show = NULL;
+  if (g_map.bmp && !g_map.complete) { g_map.complete = true; notify(); }
+}
+
 void map_handle(int cmd, DictionaryIterator *it) {
   int seq = tuple_int(it, MESSAGE_KEY_seq, -1);
   if (seq != g_map.seq) return;  // another screen's picture
@@ -452,6 +459,7 @@ void map_handle(int cmd, DictionaryIterator *it) {
     begin(it);
     notify();
   } else if (cmd == CMD_MAP_CHUNK) {
+    if (!s_show || !app_timer_reschedule(s_show, 2000)) s_show = app_timer_register(2000, show_now, NULL);
     // a block of rows: starting at row `offset`, byte `num`, `stride` bytes per row
     if (!g_map.bmp || tuple_int(it, MESSAGE_KEY_img, -2) != g_map.chunk_img) return;
     const Tuple *dt = dict_find(it, MESSAGE_KEY_data);

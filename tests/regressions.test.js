@@ -182,7 +182,7 @@ test('map pieces are PackBits-packed rows that unpack exactly, within the messag
     for (let i = 0; i < stride * h; i++) { if (rnd() > flat) v = Math.floor(rnd() * 256); data.push(v); }
     const img = { format: 1, stride, width: w, height: h, data };
     const chunks = p.context.chunksFor(img, [{ x0: 20, x1: 180, y0: 3, y1: 57 }]);
-    const room = Math.max(64, p.context.watch.inbox - 90);
+    const room = Math.max(64, p.context.watch.inbox - 160);
     for (const ch of chunks) {
       assert.ok(ch.data.length <= room);
       const rows = unpack(ch.data);
