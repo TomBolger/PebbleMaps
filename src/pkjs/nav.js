@@ -143,6 +143,7 @@ var SAY = {
   de: { reroute: 'Route wird neu berechnet', arrived: 'Sie haben Ihr Ziel erreicht', at: ': ', ahead: 'Ihr Ziel liegt vor Ihnen', getOff: 'Aussteigen bei ', board: 'Einsteigen in ', toward: ' Richtung ' },
   it: { reroute: 'Ricalcolo del percorso', arrived: 'Sei arrivato', at: ' a ', ahead: 'La destinazione è davanti a te', getOff: 'Scendi a ', board: 'Prendi il ', toward: ' verso ' },
   pt: { reroute: 'Recalculando', arrived: 'Você chegou', at: ' a ', ahead: 'Seu destino está à frente', getOff: 'Desça em ', board: 'Pegue o ', toward: ' sentido ' },
+  pl: { reroute: 'Wyznaczanie nowej trasy', arrived: 'Jesteś na miejscu', at: ': ', ahead: 'Cel jest przed tobą', getOff: 'Wysiądź na przystanku ', board: 'Wsiądź do ', toward: ' w kierunku ' },
   nl: { reroute: 'Route wordt herberekend', arrived: 'U bent aangekomen', at: ' bij ', ahead: 'Uw bestemming ligt voor u', getOff: 'Stap uit bij ', board: 'Neem ', toward: ' richting ' }
 };
 var SAY_EN = { reroute: 'Rerouting', arrived: 'You have arrived', at: ' at ', ahead: 'Your destination is ahead', getOff: 'Get off at ', board: 'Board ', toward: ' toward ' };

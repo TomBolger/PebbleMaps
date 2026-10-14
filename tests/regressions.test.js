@@ -204,4 +204,5 @@ test('spoken extras follow the chosen language; English keeps "In ..., ..."', ()
   assert.ok(/^In .*, turn left$/.test(en.inDistance(300, 'Turn left')));
   assert.equal(de.words().w.reroute, 'Route wird neu berechnet');
   assert.equal(mk('ja').words().w.reroute, 'Rerouting');
+  assert.equal(mk('pl-PL').words().w.reroute, 'Wyznaczanie nowej trasy');
 });
