@@ -136,6 +136,28 @@ function stepList(route, imperial) {
   });
 }
 
+// Spoken words of our own (Google's instructions already come in the chosen language)
+var SAY = {
+  es: { reroute: 'Recalculando', arrived: 'Has llegado', at: ' a ', ahead: 'Tu destino está delante', getOff: 'Bájate en ', board: 'Sube al ', toward: ' hacia ' },
+  fr: { reroute: 'Nouvel itinéraire', arrived: 'Vous êtes arrivé', at: ' à ', ahead: 'Votre destination est devant vous', getOff: 'Descendez à ', board: 'Prenez le ', toward: ' direction ' },
+  de: { reroute: 'Route wird neu berechnet', arrived: 'Sie haben Ihr Ziel erreicht', at: ': ', ahead: 'Ihr Ziel liegt vor Ihnen', getOff: 'Aussteigen bei ', board: 'Einsteigen in ', toward: ' Richtung ' },
+  it: { reroute: 'Ricalcolo del percorso', arrived: 'Sei arrivato', at: ' a ', ahead: 'La destinazione è davanti a te', getOff: 'Scendi a ', board: 'Prendi il ', toward: ' verso ' },
+  pt: { reroute: 'Recalculando', arrived: 'Você chegou', at: ' a ', ahead: 'Seu destino está à frente', getOff: 'Desça em ', board: 'Pegue o ', toward: ' sentido ' },
+  nl: { reroute: 'Route wordt herberekend', arrived: 'U bent aangekomen', at: ' bij ', ahead: 'Uw bestemming ligt voor u', getOff: 'Stap uit bij ', board: 'Neem ', toward: ' richting ' }
+};
+var SAY_EN = { reroute: 'Rerouting', arrived: 'You have arrived', at: ' at ', ahead: 'Your destination is ahead', getOff: 'Get off at ', board: 'Board ', toward: ' toward ' };
+
+Navigator.prototype.words = function () {
+  var lang = String((this.settings && this.settings.language) || 'en').split('-')[0].toLowerCase();
+  return { lang: lang, w: SAY[lang] || SAY_EN };
+};
+
+// "In 0.3 miles, turn right" in English; other languages say Google's instruction on its own
+Navigator.prototype.inDistance = function (meters, say) {
+  if (this.words().lang !== 'en') return say;
+  return 'In ' + brief.spokenDistance(fmt.distance(meters, this.settings.imperial, true)) + ', ' + lowerFirst(say);
+};
+
 // "Turn right" -> "turn right" (after "In 0.3 miles, ")
 function lowerFirst(t) {
   t = String(t || '');
@@ -281,7 +303,7 @@ Navigator.prototype.update = function (pos, accuracy, timestamp) {
   if (this.offCount >= 3 && !this.rerouting && now - this.lastReroute > 15000) {
     this.rerouting = true;
     this.lastReroute = now;
-    this.speak('Rerouting');
+    this.speak(this.words().w.reroute);
     this.reroute(pos, function (err, route) {
       self.rerouting = false;
       if (!err && route) {
@@ -304,7 +326,8 @@ Navigator.prototype.update = function (pos, accuracy, timestamp) {
       cmd: P.CMD.NAV, text: (r.dest && r.dest.name) || 'Destination', text2: '', text3: '', text4: '',
       num: P.MAN.ARRIVE, idx: P.MAN.NONE, num2: Math.round(now / 1000), flags: P.NAV_FLAG.ARRIVED
     });
-    this.speak('You have arrived' + (r.dest && r.dest.name ? ' at ' + r.dest.name : ''));
+    var wd = this.words().w;
+    this.speak(wd.arrived + (r.dest && r.dest.name ? wd.at + r.dest.name : ''));
     if (this.onArrive) this.onArrive();
     return;
   }
@@ -318,7 +341,7 @@ Navigator.prototype.update = function (pos, accuracy, timestamp) {
     distM = step.endDist - snap.s;
     man = t.icon;
     text = 'Ride ' + t.line + ' · get off at ' + (t.to || 'your stop');
-    say = 'Get off at ' + (t.to || 'your stop');
+    say = this.words().w.getOff + (t.to || '');
     detail = t.stops + (t.stops === 1 ? ' stop' : ' stops') + (t.arrives ? ' · arrive ' + t.arrives : '');
     flags |= P.NAV_FLAG.TRANSIT;
     alertKey = 'exit' + k;
@@ -336,7 +359,7 @@ Navigator.prototype.update = function (pos, accuracy, timestamp) {
     if (next.transit) {
       var nt = next.transit;
       text = 'Board ' + nt.line + (nt.headsign ? ' toward ' + nt.headsign : '') + ' at ' + (nt.from || 'the stop');
-      say = 'Board ' + nt.line + (nt.headsign ? ' toward ' + nt.headsign : '');
+      say = this.words().w.board + nt.line + (nt.headsign ? this.words().w.toward + nt.headsign : '');
       detail = nt.departs ? 'Departs ' + nt.departs : '';
       flags |= P.NAV_FLAG.TRANSIT;
     }
@@ -345,7 +368,7 @@ Navigator.prototype.update = function (pos, accuracy, timestamp) {
     distM = toEnd;
     man = P.MAN.ARRIVE;
     text = 'Arrive at ' + ((r.dest && r.dest.name) || 'destination');
-    say = 'Your destination is ahead';
+    say = this.words().w.ahead;
     alertKey = 'arrive';
   }
   distM = Math.max(0, distM);
@@ -367,7 +390,7 @@ Navigator.prototype.update = function (pos, accuracy, timestamp) {
   this.lastSay = say;
   this.lastDistM = distM;
   this.lastKeyName = alertKey;
-  var soonText = 'In ' + brief.spokenDistance(fmt.distance(soonAt, imperial, true)) + ', ' + lowerFirst(say);
+  var soonText = this.inDistance(soonAt, say);
   if (this.preparedKey !== alertKey) {
     this.preparedKey = alertKey;
     this.prepare([say, soonText]);
@@ -383,7 +406,7 @@ Navigator.prototype.update = function (pos, accuracy, timestamp) {
   } else if (distM <= soonAt && !al.soon && (step ? step.endDist - step.startDist : 0) > soonAt * 1.3) {
     al.soon = true;
     flags |= P.NAV_FLAG.ALERT_SOON;
-    this.speak(distM > soonAt * 0.6 ? soonText : 'In ' + brief.spokenDistance(fmt.distance(distM, imperial, true)) + ', ' + lowerFirst(say));
+    this.speak(distM > soonAt * 0.6 ? soonText : this.inDistance(distM, say));
   }
 
   if (distM <= soonAt * 1.15) flags |= P.NAV_FLAG.NEAR;
@@ -417,7 +440,7 @@ Navigator.prototype.currentPhrase = function () {
   var d = this.lastDistM || 0;
   var th = THRESH[this.route.mode] || THRESH[0];
   if (d <= th.now || this.lastKeyName === 'start') return this.lastSay;
-  return 'In ' + brief.spokenDistance(fmt.distance(d, this.settings.imperial, true)) + ', ' + lowerFirst(this.lastSay);
+  return this.inDistance(d, this.lastSay);
 };
 
 Navigator.prototype.noGps = function (text) {

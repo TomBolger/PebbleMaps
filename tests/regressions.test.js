@@ -196,3 +196,12 @@ test('map pieces are PackBits-packed rows that unpack exactly, within the messag
     assert.ok(total > 0);
   }
 });
+
+test('spoken extras follow the chosen language; English keeps "In ..., ..."', () => {
+  const mk = lang => new nav.Navigator({ route: nav.buildRoute(apiRoute(), 0, { lat: 0, lng: 0.01, name: 'Cafe' }), settings: { language: lang, imperial: false }, send() {} });
+  const de = mk('de-DE'), en = mk('en-US');
+  assert.equal(de.inDistance(300, 'Links abbiegen'), 'Links abbiegen');
+  assert.ok(/^In .*, turn left$/.test(en.inDistance(300, 'Turn left')));
+  assert.equal(de.words().w.reroute, 'Route wird neu berechnet');
+  assert.equal(mk('ja').words().w.reroute, 'Rerouting');
+});

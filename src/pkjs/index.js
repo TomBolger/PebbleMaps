@@ -67,6 +67,7 @@ function reloadSettings() {
   S = settings.get();
   var key = S.apiKey || dev.testKey || '';
   google.setKey(key);
+  google.setLanguage(S.language);
 }
 
 // ---------------------------------------------------------------------------
@@ -399,7 +400,7 @@ function packRow(src, off, n, out) {
 function chunksFor(img, rects) {
   var out = [];
   var room = Math.max(64, watch.inbox - 90);
-  rects.forEach(function (r) {
+  rects.forEach(function (r, ri) {
     var xb0, xb1;
     if (img.format === 1) { xb0 = r.x0 >> 1; xb1 = (r.x1 + 1) >> 1; }
     else { xb0 = r.x0 >> 3; xb1 = (r.x1 + 7) >> 3; }
@@ -411,7 +412,7 @@ function chunksFor(img, rects) {
       var row = [];
       packRow(img.data, y * img.stride + xb0, bw, row);
       if (!cur || cur.data.length + row.length > room) {
-        cur = { y: y, xb: xb0, stride: bw, data: [] };
+        cur = { y: y, xb: xb0, stride: bw, data: [], rect: ri };
         out.push(cur);
       }
       for (var i = 0; i < row.length; i++) cur.data.push(row[i]);
@@ -425,7 +426,7 @@ function screenFirstRects(w, h, sw, sh, rowsPer) {
   if (!sw || !sh || (sw >= w && sh >= h)) return centerOutRects(w, h, rowsPer);
   sw = Math.min(sw, w); sh = Math.min(sh, h);
   var x0 = (w - sw) >> 1, y0 = (h - sh) >> 1, x1 = x0 + sw, y1 = y0 + sh;
-  var r = centerOutRects(sw, sh, rowsPer).map(function (q) { return { x0: x0, x1: x1, y0: q.y0 + y0, y1: q.y1 + y0 }; });
+  var r = [{ x0: x0, x1: x1, y0: y0, y1: y1 }];   // the screen in as few pieces as possible
   if (y0 > 0) r.push({ x0: 0, x1: w, y0: 0, y1: y0 });
   if (y1 < h) r.push({ x0: 0, x1: w, y0: y1, y1: h });
   if (x0 > 0) r.push({ x0: 0, x1: x0, y0: y0, y1: y1 });
@@ -439,9 +440,10 @@ function pushImage(seq, img, plan, info, markers, opts) {
   opts = opts || {};
   var prev = wimg;
   var ref = prev && plan.ref && prev.id === plan.ref ? plan.ref : 0;
-  var rects = null;
+  var rects = null, whole = false;
   if (ref && prev.valid && prev.key === info.key) rects = stripRects(plan.v, img.width, img.height);
   if (!rects) {
+    whole = true;
     msg.drop('map:');   // a whole new picture replaces anything still waiting
     rects = screenFirstRects(img.width, img.height, opts.sw, opts.sh, 16);
   }
@@ -479,8 +481,13 @@ function pushImage(seq, img, plan, info, markers, opts) {
     send(md, 'map:' + seq);
   }
   if (opts.onBegin) opts.onBegin();
-  chunks.forEach(function (ch) {
-    msg.send({ cmd: CMD.MAP_CHUNK, seq: seq, img: cur.id, offset: ch.y, num: ch.xb, stride: ch.stride, data: ch.data },
+  // The watch shows the new picture all at once: when the screen part is complete
+  // (flags 1 on its last piece), and again with the last piece of all
+  var lastScreen = -1;
+  chunks.forEach(function (ch, i) { if (!whole || ch.rect === 0) lastScreen = i; });
+  chunks.forEach(function (ch, i) {
+    msg.send({ cmd: CMD.MAP_CHUNK, seq: seq, img: cur.id, offset: ch.y, num: ch.xb, stride: ch.stride, data: ch.data,
+               flags: (i === lastScreen || i === chunks.length - 1) ? 1 : 0 },
       'map:' + seq, oneDone);
   });
 }

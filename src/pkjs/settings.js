@@ -38,11 +38,15 @@ function get() {
     var lang = (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
     imperial = /-(US|LR|MM|GB)$/i.test(lang) || lang === 'en';
   }
+  // language for Google's answers: chosen in Settings, or the phone's
+  var language = c.language && c.language !== 'auto' ? String(c.language) :
+    String((typeof navigator !== 'undefined' && navigator.language) || 'en-US');
   var dm = parseInt(c.defaultMode, 10);
   return {
     apiKey: String(c.apiKey || '').trim(),
     defaultMode: isNaN(dm) ? P.MODE.DRIVE : dm,
     imperial: imperial,
+    language: language,
     avoidTolls: bool(c.avoidTolls, false),
     avoidHighways: bool(c.avoidHighways, false),
     avoidFerries: bool(c.avoidFerries, false),

@@ -11,7 +11,8 @@ var P = require('./protocol');
 var config = {
   key: '',
   base: null,        // test override: 'http://127.0.0.1:8765'
-  language: 'en'
+  language: 'en',
+  voice: 'en-US'
 };
 
 function setKey(key) {
@@ -24,6 +25,20 @@ function setKey(key) {
     config.key = key;
   }
 }
+
+// "de-DE", "pt-BR", "fr" ... -> the code Google's map and place services use ("de", "pt-BR", "fr"),
+// plus a region for the voice ("de-DE")
+var VOICE_REGION = { en: 'en-US', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', it: 'it-IT', pt: 'pt-BR', nl: 'nl-NL',
+  sv: 'sv-SE', da: 'da-DK', nb: 'nb-NO', no: 'nb-NO', fi: 'fi-FI', pl: 'pl-PL', cs: 'cs-CZ', tr: 'tr-TR' };
+function setLanguage(lang) {
+  lang = String(lang || 'en').replace('_', '-');
+  var base = lang.split('-')[0].toLowerCase();
+  var region = lang.split('-')[1];
+  config.language = (base === 'pt' || base === 'zh') && region ? base + '-' + region.toUpperCase() : base;
+  config.voice = region ? base + '-' + region.toUpperCase() : (VOICE_REGION[base] || base);
+  if (base === 'no') config.language = 'nb';
+}
+function language() { return config.language; }
 
 function hasKey() { return !!config.key; }
 function isTest() { return !!config.base; }
@@ -388,7 +403,7 @@ function placePhoto(name, maxW, maxH, cb) {
 // --- Cloud Text-to-Speech (spoken directions) ----------------------------------
 // cb(err, base64 WAV at 8 kHz)
 function tts(text, cb) {
-  var lang = config.language === 'en' ? 'en-US' : config.language;
+  var lang = config.voice || 'en-US';
   request({
     method: 'POST',
     url: url('tts', '/v1/text:synthesize'),
@@ -637,6 +652,8 @@ function checkKey(loc, cb) {
 }
 
 module.exports = {
+  setLanguage: setLanguage,
+  language: language,
   _internal: { STYLES: STYLES, PLACE_FIELDS: PLACE_FIELDS, ROUTE_FIELDS_FULL: ROUTE_FIELDS_FULL, ROUTE_FIELDS_SUMMARY: ROUTE_FIELDS_SUMMARY, INFO_FIELDS: INFO_FIELDS },
   tts: tts,
   autocomplete: autocomplete,

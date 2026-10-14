@@ -1,7 +1,7 @@
 {
   "name": "pebble-maps",
   "author": "Tom Bolger",
-  "version": "1.20.0",
+  "version": "1.21.0",
   "keywords": [
     "pebble-app",
     "maps",
@@ -58,6 +58,7 @@
       "apiKey",
       "defaultMode",
       "units",
+      "language",
       "favorites",
       "avoidTolls",
       "avoidHighways",

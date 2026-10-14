@@ -476,8 +476,11 @@ void map_handle(int cmd, DictionaryIterator *it) {
         if (++col == stride) { col = 0; y++; }
       }
     }
-    g_map.complete = true;
-    notify();
+    // redraw only once the screen's part of the picture is all here (no slow wipe)
+    if (tuple_int(it, MESSAGE_KEY_flags, 1)) {
+      g_map.complete = true;
+      notify();
+    }
   } else if (cmd == CMD_MARKERS) {
     const Tuple *dt = dict_find(it, MESSAGE_KEY_data);
     g_map.n_markers = 0;
@@ -571,7 +574,7 @@ int map_poi_near(GPoint p, GRect frame, int max_dist) {
 
 void map_draw(GContext *ctx, GRect frame, int selected) {
   int sx = g_map.shift_x + s_drag_x, sy = g_map.shift_y + s_drag_y;
-  if (g_map.bmp) {
+  if (g_map.bmp && g_map.complete) {   // a new picture shows once its screen part is all here
     GRect r = GRect(frame.origin.x + (frame.size.w - g_map.w) / 2 + sx,
                     frame.origin.y + (frame.size.h - g_map.h) / 2 + sy, g_map.w, g_map.h);
     // only the strips the picture doesn't cover get the "loading" look

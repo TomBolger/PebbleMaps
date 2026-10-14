@@ -35,6 +35,21 @@ function config() {
         },
         {
           type: 'select',
+          messageKey: 'language',
+          label: 'Language for places and directions',
+          description: 'Place names, addresses, turn instructions and spoken directions. To speak searches in another language, set the dictation language in the Pebble app on your phone.',
+          defaultValue: 'auto',
+          options: [
+            { label: 'Automatic (phone language)', value: 'auto' },
+            { label: 'English', value: 'en' }, { label: 'Español', value: 'es' }, { label: 'Français', value: 'fr' },
+            { label: 'Deutsch', value: 'de' }, { label: 'Italiano', value: 'it' }, { label: 'Português', value: 'pt' },
+            { label: 'Nederlands', value: 'nl' }, { label: 'Svenska', value: 'sv' }, { label: 'Dansk', value: 'da' },
+            { label: 'Norsk', value: 'nb' }, { label: 'Suomi', value: 'fi' }, { label: 'Polski', value: 'pl' },
+            { label: 'Čeština', value: 'cs' }, { label: 'Türkçe', value: 'tr' }
+          ]
+        },
+        {
+          type: 'select',
           messageKey: 'units',
           label: 'Distances in',
           defaultValue: 'auto',
