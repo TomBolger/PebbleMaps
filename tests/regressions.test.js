@@ -247,3 +247,17 @@ test('zooming out keeps the most popular places, thinned so they do not crowd', 
   c.maybeFetchPois(view(16)); c.maybeFetchPois(view(14));
   assert.equal(p.pois.length, 2);
 });
+
+test('overview: resent only when the view leaves its middle, changes zoom or turns', () => {
+  const ov = require('../src/pkjs/overview');
+  const c = [1000 * 4, 2000 * 4];
+  const first = ov.next(null, 15, c, 0, 100, 114);
+  assert.deepEqual(first, { zoom: 13, c: [1000, 2000], w: 100, h: 114 });
+  const sent = { zoom: 13, c: [1000, 2000], heading: 0 };
+  assert.equal(ov.next(sent, 15, [c[0] + 4 * 10, c[1]], 0, 100, 114), null);
+  assert.notEqual(ov.next(sent, 15, [c[0] + 4 * 30, c[1]], 0, 100, 114), null);
+  assert.notEqual(ov.next(sent, 16, [c[0] * 2, c[1] * 2], 0, 100, 114), null);
+  assert.notEqual(ov.next(sent, 15, c, 90, 100, 114), null);
+  assert.equal(ov.next(null, 15, c, 0, 0, 0), null);
+  assert.equal(ov.next(null, 1, c, 0, 100, 114), null);
+});
