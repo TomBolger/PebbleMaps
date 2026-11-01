@@ -204,8 +204,7 @@ static void draw_switch(GContext *ctx, GPoint c, bool on, bool hl, bool dim) {
   ui_fill_rect(ctx, track, r, 7);
   graphics_context_set_stroke_color(ctx, hl ? GColorWhite : C_DIVIDER);
   graphics_draw_round_rect(ctx, r, 7);
-  graphics_context_set_fill_color(ctx, on ? (hl ? blue : GColorWhite) : (hl ? blue : PBL_IF_COLOR_ELSE(dim ? GColorDarkGray : GColorBlack, GColorBlack)));
-  graphics_fill_circle(ctx, GPoint(on ? r.origin.x + 17 : r.origin.x + 7, c.y), 4);
+  ui_fill_circle(ctx, on ? (hl ? blue : GColorWhite) : (hl ? blue : PBL_IF_COLOR_ELSE(dim ? GColorDarkGray : GColorBlack, GColorBlack)), GPoint(on ? r.origin.x + 17 : r.origin.x + 7, c.y), 4);
 }
 
 static int16_t header_h(MenuLayer *m, uint16_t section, void *ctx) {

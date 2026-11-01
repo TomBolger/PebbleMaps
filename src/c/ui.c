@@ -126,6 +126,11 @@ void ui_fill_rect(GContext *ctx, GColor color, GRect box, int radius) {
   graphics_fill_rect(ctx, box, radius, radius ? GCornersAll : GCornerNone);
 }
 
+void ui_fill_circle(GContext *ctx, GColor color, GPoint center, int radius) {
+  graphics_context_set_fill_color(ctx, color);
+  graphics_fill_circle(ctx, center, radius);
+}
+
 static int isqrt(int v) {
   if (v <= 0) return 0;
   int r = v, last;
@@ -286,7 +291,9 @@ void icon_draw(GContext *ctx, IconId id, GPoint c, int size, GColor fg, GColor b
   graphics_context_set_stroke_width(ctx, sw);
 
   // shapes that need more than the byte programs can say
-  if (id == ICON_STAR || id == ICON_STAR_OUTLINE) {
+  if (id <= ICON_NONE || id >= ICON_COUNT) {
+    // nothing to draw
+  } else if (id == ICON_STAR || id == ICON_STAR_OUTLINE) {
     // classic 5-point star, built symmetrically around the vertical axis
     int R = size / 2, r = size * 20 / 100;
     GPoint pts[10];
@@ -475,17 +482,14 @@ void draw_pin(GContext *ctx, GPoint tip, int r, bool selected) {
   // body
   GPoint tri[3] = { GPoint(c.x - r + 1, c.y + r / 2), GPoint(c.x + r - 1, c.y + r / 2), tip };
   GPath path = { .num_points = 3, .points = tri };
-  graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(C_RED_DARK, GColorWhite));
-  graphics_fill_circle(ctx, c, r + 1);
-  graphics_context_set_fill_color(ctx, selected ? C_RED : PBL_IF_COLOR_ELSE(GColorSunsetOrange, GColorBlack));
-  graphics_fill_circle(ctx, c, r);
+  ui_fill_circle(ctx, PBL_IF_COLOR_ELSE(C_RED_DARK, GColorWhite), c, r + 1);
+  ui_fill_circle(ctx, selected ? C_RED : PBL_IF_COLOR_ELSE(GColorSunsetOrange, GColorBlack), c, r);
   gpath_draw_filled(ctx, &path);
 #ifdef PBL_BW
   graphics_context_set_stroke_color(ctx, GColorWhite);
   graphics_draw_circle(ctx, c, r);
 #endif
-  graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(C_RED_DARK, GColorWhite));
-  graphics_fill_circle(ctx, c, r / 3 + 1);
+  ui_fill_circle(ctx, PBL_IF_COLOR_ELSE(C_RED_DARK, GColorWhite), c, r / 3 + 1);
 }
 
 void draw_me_dot(GContext *ctx, GPoint c, int r) {
@@ -495,13 +499,10 @@ void draw_me_dot(GContext *ctx, GPoint c, int r) {
   graphics_context_set_stroke_width(ctx, 1);
   graphics_draw_circle(ctx, c, r * 3);
 #endif
-  graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(GColorWhite, GColorBlack));
-  graphics_fill_circle(ctx, c, r + 2);
-  graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(C_BLUE, GColorWhite));
-  graphics_fill_circle(ctx, c, r);
+  ui_fill_circle(ctx, PBL_IF_COLOR_ELSE(GColorWhite, GColorBlack), c, r + 2);
+  ui_fill_circle(ctx, PBL_IF_COLOR_ELSE(C_BLUE, GColorWhite), c, r);
 #ifdef PBL_BW
-  graphics_context_set_fill_color(ctx, GColorBlack);
-  graphics_fill_circle(ctx, c, r / 2);
+  ui_fill_circle(ctx, GColorBlack, c, r / 2);
 #endif
 }
 
@@ -538,18 +539,13 @@ void draw_poi(GContext *ctx, GPoint c, int cat) {
   int r = g_fonts.level >= 1 ? 5 : 4;
 #ifdef PBL_COLOR
   graphics_context_set_antialiased(ctx, true);
-  graphics_context_set_fill_color(ctx, GColorWhite);
-  graphics_fill_circle(ctx, c, r + 1);
-  graphics_context_set_fill_color(ctx, poi_color(cat));
-  graphics_fill_circle(ctx, c, r);
-  graphics_context_set_fill_color(ctx, GColorWhite);
-  graphics_fill_circle(ctx, c, 1);
+  ui_fill_circle(ctx, GColorWhite, c, r + 1);
+  ui_fill_circle(ctx, poi_color(cat), c, r);
+  ui_fill_circle(ctx, GColorWhite, c, 1);
 #else
   // hollow, so it reads differently from your (filled) dot
-  graphics_context_set_fill_color(ctx, GColorBlack);
-  graphics_fill_circle(ctx, c, r + 1);
-  graphics_context_set_fill_color(ctx, GColorWhite);
-  graphics_fill_circle(ctx, c, r - 1);
+  ui_fill_circle(ctx, GColorBlack, c, r + 1);
+  ui_fill_circle(ctx, GColorWhite, c, r - 1);
 #endif
 }
 
@@ -569,8 +565,7 @@ void draw_poi_label(GContext *ctx, GPoint c, int cat, const char *name, GRect pi
   graphics_context_set_stroke_width(ctx, 1);
   graphics_draw_round_rect(ctx, pill, pill.size.h / 2);
   int r = g_fonts.level >= 1 ? 5 : 4;
-  graphics_context_set_fill_color(ctx, poi_color(cat));
-  graphics_fill_circle(ctx, c, r);
+  ui_fill_circle(ctx, poi_color(cat), c, r);
   graphics_context_set_text_color(ctx, dark ? GColorWhite : GColorBlack);
   bool left = c.x > pill.origin.x + pill.size.w / 2;   // the name sits on the dot's left
   int tx = left ? pill.origin.x + 4 : c.x + r + 3;
@@ -583,8 +578,7 @@ void draw_compass(GContext *ctx, GPoint cc, int map_heading) {
 #ifdef PBL_COLOR
   graphics_context_set_antialiased(ctx, true);
 #endif
-  graphics_context_set_fill_color(ctx, GColorWhite);
-  graphics_fill_circle(ctx, cc, 11);
+  ui_fill_circle(ctx, GColorWhite, cc, 11);
   graphics_context_set_stroke_color(ctx, C_DIVIDER);
   graphics_context_set_stroke_width(ctx, 1);
   graphics_draw_circle(ctx, cc, 11);
@@ -604,8 +598,7 @@ void draw_fab(GContext *ctx, GPoint c, int r, IconId icon, GColor fill) {
 #ifdef PBL_COLOR
   graphics_context_set_antialiased(ctx, true);
 #endif
-  graphics_context_set_fill_color(ctx, fill);
-  graphics_fill_circle(ctx, c, r);
+  ui_fill_circle(ctx, fill, c, r);
   icon_draw(ctx, icon, c, r + r / 4, GColorWhite, fill);
 }
 
@@ -672,8 +665,7 @@ static void dots_update(Layer *layer, GContext *ctx) {
     int32_t ang = TRIG_MAX_ANGLE * ((d->phase + i * 4) % 36) / 36;
     int dy = (int)(sin_lookup(ang) * 6 / TRIG_MAX_RATIO);
     if (dy > 0) dy = dy / 3;
-    graphics_context_set_fill_color(ctx, (GColor){ .argb = cols[i] });
-    graphics_fill_circle(ctx, GPoint(x0 + i * gap, b.size.h / 2 - dy), r);
+    ui_fill_circle(ctx, (GColor){ .argb = cols[i] }, GPoint(x0 + i * gap, b.size.h / 2 - dy), r);
   }
 }
 
@@ -717,8 +709,7 @@ static void strip_dots(GContext *ctx, int cx, int y, int page, int pages) {
   for (int i = 0; i < pages; i++) {
     GPoint d = GPoint(dx0 + i * 6, y);
     if (i == page) {
-      graphics_context_set_fill_color(ctx, C_BLUE);
-      graphics_fill_circle(ctx, d, 2);
+      ui_fill_circle(ctx, C_BLUE, d, 2);
     } else {
       graphics_context_set_stroke_color(ctx, PBL_IF_COLOR_ELSE(GColorDarkGray, GColorBlack));
       graphics_context_set_stroke_width(ctx, 1);
@@ -733,8 +724,7 @@ void draw_action_strip(GContext *ctx, GRect bounds, const StripIcons *ic) {
   int isz = PBL_IF_ROUND_ELSE(20, w >= 36 ? 22 : 19);
 #ifdef PBL_ROUND
   int R = bounds.size.h;
-  graphics_context_set_fill_color(ctx, C_BG);
-  graphics_fill_circle(ctx, GPoint(bounds.size.w - w + R, bounds.size.h / 2), R);
+  ui_fill_circle(ctx, C_BG, GPoint(bounds.size.w - w + R, bounds.size.h / 2), R);
   graphics_context_set_stroke_color(ctx, C_DIVIDER);
   graphics_draw_circle(ctx, GPoint(bounds.size.w - w + R, bounds.size.h / 2), R);
   cx = bounds.size.w - w / 2 - 4;
@@ -768,8 +758,7 @@ void draw_side_tab(GContext *ctx, GRect bounds) {
 #ifdef PBL_COLOR
   graphics_context_set_antialiased(ctx, true);
 #endif
-  graphics_context_set_fill_color(ctx, GColorBlack);
-  graphics_fill_circle(ctx, c, r);
+  ui_fill_circle(ctx, GColorBlack, c, r);
   graphics_context_set_fill_color(ctx, GColorWhite);
   for (int i = -1; i <= 1; i++) graphics_fill_circle(ctx, GPoint(c.x - r / 2 - 1, c.y + i * 6), 1);
 }
@@ -781,11 +770,9 @@ void draw_info_tab(GContext *ctx, GRect cell, bool hl) {
 #ifdef PBL_COLOR
   graphics_context_set_antialiased(ctx, true);
 #endif
-  graphics_context_set_fill_color(ctx, hl ? GColorWhite : C_BLUE);
-  graphics_fill_circle(ctx, c, r);
+  ui_fill_circle(ctx, hl ? GColorWhite : C_BLUE, c, r);
   GColor fg = hl ? C_BLUE : GColorWhite;
-  graphics_context_set_fill_color(ctx, fg);
-  graphics_fill_circle(ctx, GPoint(c.x - 5, c.y - 5), 1);
+  ui_fill_circle(ctx, fg, GPoint(c.x - 5, c.y - 5), 1);
   graphics_fill_rect(ctx, GRect(c.x - 6, c.y - 2, 2, 8), 0, GCornerNone);
 }
 

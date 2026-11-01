@@ -113,6 +113,9 @@ void ui_toast_cancel(void);
 // Fill a (rounded) rectangle in one colour
 void ui_fill_rect(GContext *ctx, GColor color, GRect box, int radius);
 
+// Fill a circle in one colour
+void ui_fill_circle(GContext *ctx, GColor color, GPoint center, int radius);
+
 // Draw text: align is a GTextAlignment, optionally | TXT_ELLIPSIS (else clipped)
 #define TXT_ELLIPSIS 4
 void ui_text(GContext *ctx, const char *text, GFont font, GRect box, int align);
