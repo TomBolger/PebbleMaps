@@ -201,12 +201,10 @@ static void draw_switch(GContext *ctx, GPoint c, bool on, bool hl, bool dim) {
   GColor blue = dim ? PBL_IF_COLOR_ELSE(GColorDarkGray, C_BLUE) : C_BLUE;
   GColor track = on ? (hl ? GColorWhite : (dim ? PBL_IF_COLOR_ELSE(GColorLightGray, C_BLUE) : C_BLUE))
                     : PBL_IF_COLOR_ELSE(GColorLightGray, GColorWhite);
-  graphics_context_set_fill_color(ctx, track);
-  graphics_fill_rect(ctx, r, 7, GCornersAll);
+  ui_fill_rect(ctx, track, r, 7);
   graphics_context_set_stroke_color(ctx, hl ? GColorWhite : C_DIVIDER);
   graphics_draw_round_rect(ctx, r, 7);
-  graphics_context_set_fill_color(ctx, on ? (hl ? blue : GColorWhite) : (hl ? blue : PBL_IF_COLOR_ELSE(dim ? GColorDarkGray : GColorBlack, GColorBlack)));
-  graphics_fill_circle(ctx, GPoint(on ? r.origin.x + 17 : r.origin.x + 7, c.y), 4);
+  ui_fill_circle(ctx, on ? (hl ? blue : GColorWhite) : (hl ? blue : PBL_IF_COLOR_ELSE(dim ? GColorDarkGray : GColorBlack, GColorBlack)), GPoint(on ? r.origin.x + 17 : r.origin.x + 7, c.y), 4);
 }
 
 static int16_t header_h(MenuLayer *m, uint16_t section, void *ctx) {
@@ -218,12 +216,10 @@ static int16_t header_h(MenuLayer *m, uint16_t section, void *ctx) {
 
 static void draw_header(GContext *ctx, const Layer *cell, uint16_t section, void *cb) {
   GRect b = layer_get_bounds(cell);
-  graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(GColorLightGray, GColorWhite));
-  graphics_fill_rect(ctx, b, 0, GCornerNone);
+  ui_fill_rect(ctx, PBL_IF_COLOR_ELSE(GColorLightGray, GColorWhite), b, 0);
   graphics_context_set_text_color(ctx, C_TEXT);
-  graphics_draw_text(ctx, section == 0 ? "SAVED" : "RECENT", g_fonts.chip,
-                     GRect(PBL_IF_ROUND_ELSE(0, 6), -2, b.size.w - PBL_IF_ROUND_ELSE(0, 6), 16),
-                     GTextOverflowModeFill, PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentLeft), NULL);
+  ui_text(ctx, section == 0 ? "SAVED" : "RECENT", g_fonts.chip,
+                     GRect(PBL_IF_ROUND_ELSE(0, 6), -2, b.size.w - PBL_IF_ROUND_ELSE(0, 6), 16), PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentLeft));
 }
 
 static void row_content(ListWin *lw, MenuIndex *i, const char **title, const char **sub,
@@ -390,8 +386,7 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *i, void *cb) {
 #ifdef PBL_ROUND
   if (!hl) {
     graphics_context_set_text_color(ctx, fg);
-    graphics_draw_text(ctx, title, g_fonts.body_b, GRect(20, 4, b.size.w - 40, g_fonts.body_h + 6),
-                       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+    ui_text(ctx, title, g_fonts.body_b, GRect(20, 4, b.size.w - 40, g_fonts.body_h + 6), GTextAlignmentCenter | TXT_ELLIPSIS);
     return;
   }
   int y = 4;
@@ -400,12 +395,10 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *i, void *cb) {
   y += 22;
   graphics_context_set_text_color(ctx, fg);
   int sub_h = sub ? g_fonts.small_h + 4 : 0;
-  graphics_draw_text(ctx, title, g_fonts.body_b, GRect(18, y - 3, b.size.w - 36, b.size.h - y - sub_h),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+  ui_text(ctx, title, g_fonts.body_b, GRect(18, y - 3, b.size.w - 36, b.size.h - y - sub_h), GTextAlignmentCenter | TXT_ELLIPSIS);
   if (sub) {
     graphics_context_set_text_color(ctx, sub_fg);
-    graphics_draw_text(ctx, sub, g_fonts.small, GRect(18, b.size.h - sub_h - 6, b.size.w - 36, sub_h),
-                       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+    ui_text(ctx, sub, g_fonts.small, GRect(18, b.size.h - sub_h - 6, b.size.w - 36, sub_h), GTextAlignmentCenter | TXT_ELLIPSIS);
   }
 #else
   int tx = isz + 14;
@@ -425,23 +418,19 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *i, void *cb) {
   }
   int sub_h = sub ? g_fonts.small_h : 0;
   graphics_context_set_text_color(ctx, fg);
-  graphics_draw_text(ctx, title, g_fonts.body_b, GRect(tx, -2, tw - (badge ? 62 : 0), b.size.h - sub_h - 2),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+  ui_text(ctx, title, g_fonts.body_b, GRect(tx, -2, tw - (badge ? 62 : 0), b.size.h - sub_h - 2), GTextAlignmentLeft | TXT_ELLIPSIS);
   if (sub) {
     graphics_context_set_text_color(ctx, sub_fg);
-    graphics_draw_text(ctx, sub, g_fonts.small, GRect(tx, b.size.h - sub_h - 6, tw, sub_h + 4),
-                       GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    ui_text(ctx, sub, g_fonts.small, GRect(tx, b.size.h - sub_h - 6, tw, sub_h + 4), GTextAlignmentLeft | TXT_ELLIPSIS);
   }
   if (badge) {
     // pill a little roomier than the word, so the rounded corners never clip it
     int bw = graphics_text_layout_get_content_size("Default", g_fonts.chip, GRect(0, 0, 80, 20),
                                                    GTextOverflowModeFill, GTextAlignmentLeft).w + 14;
     GRect br = GRect(b.size.w - bw - 4, 4, bw, 18);
-    graphics_context_set_fill_color(ctx, hl ? GColorWhite : C_BLUE);
-    graphics_fill_rect(ctx, br, 9, GCornersAll);
+    ui_fill_rect(ctx, hl ? GColorWhite : C_BLUE, br, 9);
     graphics_context_set_text_color(ctx, hl ? C_BLUE : GColorWhite);
-    graphics_draw_text(ctx, "Default", g_fonts.chip, GRect(br.origin.x, br.origin.y - 2, br.size.w, 18),
-                       GTextOverflowModeFill, GTextAlignmentCenter, NULL);
+    ui_text(ctx, "Default", g_fonts.chip, GRect(br.origin.x, br.origin.y - 2, br.size.w, 18), GTextAlignmentCenter);
   }
 #endif
   // transit steps: Select shows the schedule
@@ -556,12 +545,10 @@ static void select_long_cb(MenuLayer *m, MenuIndex *i, void *ctx) {
 static void header_update(Layer *layer, GContext *ctx) {
   ListWin *lw = *(ListWin **)layer_get_data(layer);
   GRect b = layer_get_bounds(layer);
-  graphics_context_set_fill_color(ctx, header_color(lw->kind));
-  graphics_fill_rect(ctx, b, 0, GCornerNone);
+  ui_fill_rect(ctx, header_color(lw->kind), b, 0);
   GColor tc = (lw->kind == LW_FAVS) ? PBL_IF_COLOR_ELSE(GColorBlack, GColorWhite) : GColorWhite;
   graphics_context_set_text_color(ctx, tc);
-  graphics_draw_text(ctx, title_for(lw->kind), g_fonts.body_b, GRect(0, -3, b.size.w, g_fonts.body_h + 6),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+  ui_text(ctx, title_for(lw->kind), g_fonts.body_b, GRect(0, -3, b.size.w, g_fonts.body_h + 6), GTextAlignmentCenter | TXT_ELLIPSIS);
   // empty-favorites hint lives below the menu rows
 }
 

@@ -169,15 +169,13 @@ static void canvas_update(Layer *layer, GContext *ctx) {
     GRect pill = GRect(6, 6, mf.size.w - 12, ph);
 #endif
 #ifdef PBL_COLOR
-    graphics_context_set_fill_color(ctx, GColorLightGray);
-    graphics_fill_rect(ctx, GRect(pill.origin.x + 1, pill.origin.y + 2, pill.size.w, pill.size.h), ph / 2, GCornersAll);
+    ui_fill_rect(ctx, GColorLightGray, GRect(pill.origin.x + 1, pill.origin.y + 2, pill.size.w, pill.size.h), ph / 2);
 #endif
     draw_card(ctx, pill, ph / 2);
     icon_draw(ctx, ICON_SEARCH, GPoint(pill.origin.x + 14, pill.origin.y + ph / 2), 14, C_TEXT, C_BG);
     graphics_context_set_text_color(ctx, C_TEXT);
-    graphics_draw_text(ctx, g_app.has_mic ? PBL_IF_ROUND_ELSE("Search", "Search here") : "Explore", g_fonts.small,
-                       GRect(pill.origin.x + 25, pill.origin.y + (ph - g_fonts.small_h) / 2 - 3, pill.size.w - 30, ph),
-                       GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    ui_text(ctx, g_app.has_mic ? PBL_IF_ROUND_ELSE("Search", "Search here") : "Explore", g_fonts.small,
+                       GRect(pill.origin.x + 25, pill.origin.y + (ph - g_fonts.small_h) / 2 - 3, pill.size.w - 30, ph), GTextAlignmentLeft | TXT_ELLIPSIS);
   }
 #endif
 
@@ -197,8 +195,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
 #endif
     draw_card(ctx, sbx, 6);
     graphics_context_set_text_color(ctx, C_TEXT);
-    graphics_draw_text(ctx, s_status, g_fonts.small_b, GRect(sbx.origin.x + 2, sbx.origin.y + 1, sbx.size.w - 4, sh),
-                       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+    ui_text(ctx, s_status, g_fonts.small_b, GRect(sbx.origin.x + 2, sbx.origin.y + 1, sbx.size.w - 4, sh), GTextAlignmentCenter | TXT_ELLIPSIS);
   }
 
   if (s_bar.open) {

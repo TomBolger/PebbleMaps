@@ -171,26 +171,22 @@ static void draw_map(GContext *ctx, GRect b, GRect visible) {
 static void draw_banner(GContext *ctx, GRect b, int bh) {
   GColor bg = (s_flags & (NAV_NO_GPS | NAV_REROUTING)) ? PBL_IF_COLOR_ELSE(GColorDarkGray, GColorBlack) : C_NAVGREEN;
   if (s_flags & NAV_TRANSIT) bg = PBL_IF_COLOR_ELSE(GColorCobaltBlue, GColorBlack);
-  graphics_context_set_fill_color(ctx, bg);
-  graphics_fill_rect(ctx, GRect(0, 0, b.size.w, bh), 0, GCornerNone);
+  ui_fill_rect(ctx, bg, GRect(0, 0, b.size.w, bh), 0);
   graphics_context_set_text_color(ctx, GColorWhite);
   GColor ghost = PBL_IF_COLOR_ELSE(GColorMintGreen, GColorLightGray);
   const char *text = (s_flags & NAV_REROUTING) ? "Finding a new route..." : s_instr;
 #ifdef PBL_ROUND
   maneuver_draw(ctx, s_man, GPoint(b.size.w / 2 - 24, 24), 28, GColorWhite, ghost);
-  graphics_draw_text(ctx, s_dist, g_fonts.title, GRect(b.size.w / 2 - 6, 6, 80, 32),
-                     GTextOverflowModeFill, GTextAlignmentLeft, NULL);
-  graphics_draw_text(ctx, text, g_fonts.small_b, GRect(25, 38, b.size.w - 50, bh - 40),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+  ui_text(ctx, s_dist, g_fonts.title, GRect(b.size.w / 2 - 6, 6, 80, 32), GTextAlignmentLeft);
+  ui_text(ctx, text, g_fonts.small_b, GRect(25, 38, b.size.w - 50, bh - 40), GTextAlignmentCenter | TXT_ELLIPSIS);
 #else
   int isz = icon_size();
   int col = isz + 16;
   maneuver_draw(ctx, s_man, GPoint(col / 2, 4 + isz / 2), isz, GColorWhite, ghost);
-  graphics_draw_text(ctx, s_dist, g_fonts.small_b, GRect(0, isz + 2, col, g_fonts.small_h + 4),
-                     GTextOverflowModeFill, GTextAlignmentCenter, NULL);
+  ui_text(ctx, s_dist, g_fonts.small_b, GRect(0, isz + 2, col, g_fonts.small_h + 4), GTextAlignmentCenter);
   GFont f = banner_font(b);
   GRect tr = banner_text_rect(b, bh + 3);
-  graphics_draw_text(ctx, text, f, tr, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+  ui_text(ctx, text, f, tr, GTextAlignmentLeft | TXT_ELLIPSIS);
 #endif
   int th = then_h();
   if (th) {
@@ -198,8 +194,7 @@ static void draw_banner(GContext *ctx, GRect b, int bh) {
     GRect r = GRect(PBL_IF_ROUND_ELSE(b.size.w / 2 - 34, 0), bh, 68, th);
     graphics_fill_rect(ctx, r, 4, GCornersBottom);
     graphics_context_set_text_color(ctx, GColorWhite);
-    graphics_draw_text(ctx, "Then", g_fonts.chip, GRect(r.origin.x + 6, bh - 1, 34, 16),
-                       GTextOverflowModeFill, GTextAlignmentLeft, NULL);
+    ui_text(ctx, "Then", g_fonts.chip, GRect(r.origin.x + 6, bh - 1, 34, 16), GTextAlignmentLeft);
     maneuver_draw(ctx, s_next_man, GPoint(r.origin.x + 52, bh + th / 2), 15, GColorWhite, GColorWhite);
   }
 }
@@ -207,22 +202,19 @@ static void draw_banner(GContext *ctx, GRect b, int bh) {
 static void draw_bottom(GContext *ctx, GRect b) {
   int h = bottom_h();
   GRect r = GRect(0, b.size.h - h, b.size.w, h);
-  graphics_context_set_fill_color(ctx, C_BG);
-  graphics_fill_rect(ctx, r, 0, GCornerNone);
+  ui_fill_rect(ctx, C_BG, r, 0);
   graphics_context_set_stroke_color(ctx, C_DIVIDER);
   graphics_draw_line(ctx, r.origin, GPoint(b.size.w, r.origin.y));
   char clk[16] = "";
   if (s_arrive) format_clock(s_arrive, clk, sizeof(clk));
 #ifdef PBL_ROUND
   graphics_context_set_text_color(ctx, C_GREEN);
-  graphics_draw_text(ctx, s_remain, g_fonts.small_b, GRect(24, r.origin.y + 1, b.size.w - 48, g_fonts.small_h + 4),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+  ui_text(ctx, s_remain, g_fonts.small_b, GRect(24, r.origin.y + 1, b.size.w - 48, g_fonts.small_h + 4), GTextAlignmentCenter | TXT_ELLIPSIS);
   if (clk[0]) {
     char arr[32];
     snprintf(arr, sizeof(arr), "Arrive %s", clk);
     graphics_context_set_text_color(ctx, C_SUBTEXT);
-    graphics_draw_text(ctx, arr, g_fonts.small, GRect(34, r.origin.y + g_fonts.small_h, b.size.w - 68, g_fonts.small_h + 4),
-                       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+    ui_text(ctx, arr, g_fonts.small, GRect(34, r.origin.y + g_fonts.small_h, b.size.w - 68, g_fonts.small_h + 4), GTextAlignmentCenter | TXT_ELLIPSIS);
   }
 #else
   int rw = b.size.w - ((s_bar.open || s_menu_open) ? STRIP_W : 0);
@@ -236,27 +228,22 @@ static void draw_bottom(GContext *ctx, GRect b) {
   if (sep) { *sep = 0; dist = s_remain + (sep - t) + strlen(" · "); }
   graphics_context_set_text_color(ctx, C_GREEN);
   GSize ts = graphics_text_layout_get_content_size(t, g_fonts.title, GRect(0, 0, b.size.w, h), GTextOverflowModeFill, GTextAlignmentLeft);
-  graphics_draw_text(ctx, t, g_fonts.title, GRect(5, r.origin.y + (h - g_fonts.title_h) / 2 - 5, ts.w + 2, h),
-                     GTextOverflowModeFill, GTextAlignmentLeft, NULL);
+  ui_text(ctx, t, g_fonts.title, GRect(5, r.origin.y + (h - g_fonts.title_h) / 2 - 5, ts.w + 2, h), GTextAlignmentLeft);
   char right[48];
   snprintf(right, sizeof(right), "%s%s%s", dist, (dist[0] && clk[0]) ? " · " : "", clk);
   graphics_context_set_text_color(ctx, C_SUBTEXT);
-  graphics_draw_text(ctx, right, g_fonts.small_b,
-                     GRect(ts.w + 9, r.origin.y + (h - g_fonts.small_h) / 2 - 3, rw - ts.w - 12, g_fonts.small_h + 4),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentRight, NULL);
+  ui_text(ctx, right, g_fonts.small_b,
+                     GRect(ts.w + 9, r.origin.y + (h - g_fonts.small_h) / 2 - 3, rw - ts.w - 12, g_fonts.small_h + 4), GTextAlignmentRight | TXT_ELLIPSIS);
 #endif
 }
 
 static void draw_arrived(GContext *ctx, GRect b) {
-  graphics_context_set_fill_color(ctx, C_NAVGREEN);
-  graphics_fill_rect(ctx, b, 0, GCornerNone);
+  ui_fill_rect(ctx, C_NAVGREEN, b, 0);
   icon_draw(ctx, ICON_FLAG, GPoint(b.size.w / 2, b.size.h / 2 - 34), 40, GColorWhite, C_NAVGREEN);
   graphics_context_set_text_color(ctx, GColorWhite);
-  graphics_draw_text(ctx, "You've arrived", g_fonts.title, GRect(4, b.size.h / 2 - 8, b.size.w - 8, 34),
-                     GTextOverflowModeFill, GTextAlignmentCenter, NULL);
-  graphics_draw_text(ctx, s_instr, g_fonts.body, GRect(PBL_IF_ROUND_ELSE(20, 6), b.size.h / 2 + 24,
-                     b.size.w - PBL_IF_ROUND_ELSE(40, 12), g_fonts.body_h * 2 + 8),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+  ui_text(ctx, "You've arrived", g_fonts.title, GRect(4, b.size.h / 2 - 8, b.size.w - 8, 34), GTextAlignmentCenter);
+  ui_text(ctx, s_instr, g_fonts.body, GRect(PBL_IF_ROUND_ELSE(20, 6), b.size.h / 2 + 24,
+                     b.size.w - PBL_IF_ROUND_ELSE(40, 12), g_fonts.body_h * 2 + 8), GTextAlignmentCenter | TXT_ELLIPSIS);
 }
 
 // What Up and Down do on the first two option pages.

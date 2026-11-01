@@ -22,8 +22,7 @@ static void icon_update(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
   GColor c = mw->icon == ICON_WARNING ? C_RED : C_BLUE;
   graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(GColorCeleste, GColorWhite));
-  if (mw->icon == ICON_WARNING) graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(GColorMelon, GColorWhite));
-  graphics_fill_circle(ctx, GPoint(b.size.w / 2, b.size.h / 2), b.size.h / 2);
+  if (mw->icon == ICON_WARNING) ui_fill_circle(ctx, PBL_IF_COLOR_ELSE(GColorMelon, GColorWhite), GPoint(b.size.w / 2, b.size.h / 2), b.size.h / 2);
   icon_draw(ctx, mw->icon, GPoint(b.size.w / 2, b.size.h / 2), b.size.h * 6 / 10, c, PBL_IF_COLOR_ELSE(GColorCeleste, GColorWhite));
 }
 

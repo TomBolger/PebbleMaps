@@ -59,8 +59,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   int mh = map_h(b);
   int w = b.size.w - STRIP_W;
   map_draw(ctx, GRect(0, 0, w, mh), -1);
-  graphics_context_set_fill_color(ctx, C_BG);
-  graphics_fill_rect(ctx, GRect(0, mh, w, b.size.h - mh), 0, GCornerNone);
+  ui_fill_rect(ctx, C_BG, GRect(0, mh, w, b.size.h - mh), 0);
   graphics_context_set_stroke_color(ctx, C_DIVIDER);
   graphics_draw_line(ctx, GPoint(0, mh), GPoint(w, mh));
 
@@ -73,19 +72,18 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   int nmax = g_fonts.body_h * 2 + 8;
   GSize ns = graphics_text_layout_get_content_size(s_name, nf, GRect(0, 0, tw, nmax),
                                                    GTextOverflowModeTrailingEllipsis, al);
-  graphics_draw_text(ctx, s_name, nf, GRect(x, y - 3, tw, nmax), GTextOverflowModeTrailingEllipsis, al, NULL);
+  ui_text(ctx, s_name, nf, GRect(x, y - 3, tw, nmax), al | TXT_ELLIPSIS);
   y += ns.h;
   if (s_type[0] || s_dist[0]) {
     char line[96];
     if (s_type[0] && s_dist[0]) snprintf(line, sizeof(line), "%s · %s", s_type, s_dist);
     else snprintf(line, sizeof(line), "%s%s", s_type, s_dist);
     graphics_context_set_text_color(ctx, PBL_IF_COLOR_ELSE(GColorCobaltBlue, GColorBlack));
-    graphics_draw_text(ctx, line, g_fonts.small_b, GRect(x, y - 2, tw, g_fonts.small_h + 4), GTextOverflowModeTrailingEllipsis, al, NULL);
+    ui_text(ctx, line, g_fonts.small_b, GRect(x, y - 2, tw, g_fonts.small_h + 4), al | TXT_ELLIPSIS);
     y += g_fonts.small_h;
   }
   graphics_context_set_text_color(ctx, C_SUBTEXT);
-  graphics_draw_text(ctx, s_addr, g_fonts.small, GRect(x, y - 2, tw, b.size.h - y),
-                     GTextOverflowModeTrailingEllipsis, al, NULL);
+  ui_text(ctx, s_addr, g_fonts.small, GRect(x, y - 2, tw, b.size.h - y), al | TXT_ELLIPSIS);
 
   // hint badge: map can be moved (hold Select)
   if (!s_bar.open) {

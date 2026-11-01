@@ -657,8 +657,7 @@ void map_draw(GContext *ctx, GRect frame, int selected) {
         if (mk->kind == MK_ME) draw_me_dot(ctx, p, 5);
         else if (mk->kind == MK_ARROW) draw_puck(ctx, p, g_fonts.level >= 1 ? 7 : 6, mk->index * 2);
         else {
-          graphics_context_set_fill_color(ctx, GColorWhite);
-          graphics_fill_circle(ctx, p, 6);
+          ui_fill_circle(ctx, GColorWhite, p, 6);
           graphics_context_set_stroke_color(ctx, GColorBlack);
           graphics_context_set_stroke_width(ctx, 2);
           graphics_draw_circle(ctx, p, 5);

@@ -63,8 +63,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   int ch = card_h(b);
   map_draw(ctx, GRect(0, 0, w, b.size.h - ch), -1);
   GRect card = GRect(0, b.size.h - ch, w, ch);
-  graphics_context_set_fill_color(ctx, C_BG);
-  graphics_fill_rect(ctx, card, 0, GCornerNone);
+  ui_fill_rect(ctx, C_BG, card, 0);
   graphics_context_set_stroke_color(ctx, C_DIVIDER);
   graphics_draw_line(ctx, card.origin, GPoint(w, card.origin.y));
 
@@ -73,8 +72,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   int x = pad, tw = w - pad - 2, y = card.origin.y;
   if (s_failed) {
     graphics_context_set_text_color(ctx, C_RED);
-    graphics_draw_text(ctx, s_via[0] ? s_via : "No route found", g_fonts.small_b, GRect(x, y + 2, tw, ch - 4),
-                       GTextOverflowModeTrailingEllipsis, al, NULL);
+    ui_text(ctx, s_via[0] ? s_via : "No route found", g_fonts.small_b, GRect(x, y + 2, tw, ch - 4), al | TXT_ELLIPSIS);
   } else if (s_loaded) {
     GColor dc = s_traffic == 2 ? C_RED : (s_traffic == 1 ? PBL_IF_COLOR_ELSE(GColorOrange, GColorBlack) : C_GREEN);
     if (s_mode != MODE_DRIVE) dc = C_BLUE;
@@ -82,29 +80,28 @@ static void canvas_update(Layer *layer, GContext *ctx) {
 #ifdef PBL_ROUND
     char top[48];
     snprintf(top, sizeof(top), "%s (%s)", s_dur, s_dist);
-    graphics_draw_text(ctx, top, g_fonts.body_b, GRect(x, y - 2, tw, g_fonts.body_h + 6), GTextOverflowModeFill, al, NULL);
+    ui_text(ctx, top, g_fonts.body_b, GRect(x, y - 2, tw, g_fonts.body_h + 6), al);
     y += g_fonts.body_h;
 #else
     GSize ds = graphics_text_layout_get_content_size(s_dur, g_fonts.big, GRect(0, 0, tw, 40),
                                                      GTextOverflowModeFill, GTextAlignmentLeft);
-    graphics_draw_text(ctx, s_dur, g_fonts.big, GRect(x, y - 5, tw, g_fonts.big_h + 8), GTextOverflowModeFill, al, NULL);
+    ui_text(ctx, s_dur, g_fonts.big, GRect(x, y - 5, tw, g_fonts.big_h + 8), al);
     graphics_context_set_text_color(ctx, C_SUBTEXT);
     char d[32];
     snprintf(d, sizeof(d), "(%s)", s_dist);
-    graphics_draw_text(ctx, d, g_fonts.small, GRect(x + ds.w + 4, y + g_fonts.big_h - g_fonts.small_h - 4, tw - ds.w - 4, g_fonts.small_h + 4),
-                       GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    ui_text(ctx, d, g_fonts.small, GRect(x + ds.w + 4, y + g_fonts.big_h - g_fonts.small_h - 4, tw - ds.w - 4, g_fonts.small_h + 4), GTextAlignmentLeft | TXT_ELLIPSIS);
     y += g_fonts.big_h;
 #endif
     graphics_context_set_text_color(ctx, C_SUBTEXT);
     const char *line2 = s_extra[0] ? s_extra : s_via;
-    graphics_draw_text(ctx, line2, g_fonts.small, GRect(x, y - 3, tw, g_fonts.small_h + 4), GTextOverflowModeTrailingEllipsis, al, NULL);
+    ui_text(ctx, line2, g_fonts.small, GRect(x, y - 3, tw, g_fonts.small_h + 4), al | TXT_ELLIPSIS);
     y += g_fonts.small_h;
     if (s_arrive) {
       char clk[16], arr[32];
       format_clock(s_arrive, clk, sizeof(clk));
       snprintf(arr, sizeof(arr), "Arrive %s", clk);
       graphics_context_set_text_color(ctx, C_TEXT);
-      graphics_draw_text(ctx, arr, g_fonts.small_b, GRect(x, y - 3, tw, g_fonts.small_h + 4), GTextOverflowModeFill, al, NULL);
+      ui_text(ctx, arr, g_fonts.small_b, GRect(x, y - 3, tw, g_fonts.small_h + 4), al);
     }
   }
   if (s_bar.open) {
@@ -122,8 +119,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   draw_card(ctx, chip, 10);
   icon_draw(ctx, icon_for_mode(s_mode), GPoint(chip.origin.x + 12, chip.origin.y + 10), 13, C_BLUE, C_BG);
   graphics_context_set_text_color(ctx, C_TEXT);
-  graphics_draw_text(ctx, mode_name(s_mode), g_fonts.chip, GRect(chip.origin.x + 21, chip.origin.y + 1, 46, 16),
-                     GTextOverflowModeFill, GTextAlignmentLeft, NULL);
+  ui_text(ctx, mode_name(s_mode), g_fonts.chip, GRect(chip.origin.x + 21, chip.origin.y + 1, 46, 16), GTextAlignmentLeft);
 }
 
 static void bar_cb(MapBarEvent ev, void *ctx) {
