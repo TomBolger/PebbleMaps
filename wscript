@@ -21,6 +21,11 @@ def configure(ctx):
     Universal configuration: add your change prior to calling ctx.load('pebble_sdk').
     """
     ctx.load('pebble_sdk')
+    # Extra size-saving flags for every platform (experiment hook)
+    import os
+    extra = os.environ.get('XF', '').split()
+    for p in ctx.all_envs:
+        ctx.all_envs[p].append_value('CFLAGS', extra)
 
 
 def build(ctx):
