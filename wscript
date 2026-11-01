@@ -21,11 +21,12 @@ def configure(ctx):
     Universal configuration: add your change prior to calling ctx.load('pebble_sdk').
     """
     ctx.load('pebble_sdk')
-    # Extra size-saving flags for every platform (experiment hook)
-    import os
-    extra = os.environ.get('XF', '').split()
+    # Size tuning: the app must fit in 64 KB (.text+.data+.bss). These keep the
+    # compiler from growing code for speed. (No LTO: the firmware rejects it.)
+    size_flags = ['-fno-inline-functions-called-once', '-fno-reorder-blocks',
+                  '-fno-partial-inlining', '-fno-tree-loop-optimize']
     for p in ctx.all_envs:
-        ctx.all_envs[p].append_value('CFLAGS', extra)
+        ctx.all_envs[p].append_value('CFLAGS', size_flags)
 
 
 def build(ctx):
