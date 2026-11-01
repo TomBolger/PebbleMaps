@@ -162,7 +162,7 @@ IconId icon_for_mode(int mode) {
 #define PF(n, ...) 6, n, __VA_ARGS__
 #define COL(c) 7, c
 #define AR(x, y, w, h, a, b) 8, x, y, w, h, a, b
-#define SPK 6, 4, 14, 12, 14, 22, 5, 22, 35, 12, 26, 4, 26
+#define SPK PF(6, 4, 14, 12, 14, 22, 5, 22, 35, 12, 26, 4, 26)
 #define SPK2 PF(6, 2, 14, 9, 14, 18, 6, 18, 34, 9, 26, 2, 26)
 #define EYE_SHAPE PF(8, 2, 20, 10, 11, 20, 8, 30, 11, 38, 20, 30, 29, 20, 32, 10, 29), \
     COL(0), CF(20, 20, 8), COL(1), CF(20, 20, 4)
