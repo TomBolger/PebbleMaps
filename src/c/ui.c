@@ -112,8 +112,13 @@ static void text_glyph(GContext *ctx, const char *t, GColor fg) {
   GFont f = F(s_sz >= 28 ? FONT_KEY_GOTHIC_28_BOLD : (s_sz >= 20 ? FONT_KEY_GOTHIC_24_BOLD : FONT_KEY_GOTHIC_18_BOLD));
   int h = s_sz >= 28 ? 28 : (s_sz >= 20 ? 24 : 18);
   graphics_context_set_text_color(ctx, fg);
-  graphics_draw_text(ctx, t, f, GRect(s_c.x - s_sz / 2 - 4, s_c.y - h / 2 - h / 5, s_sz + 8, h + 4),
-                     GTextOverflowModeFill, GTextAlignmentCenter, NULL);
+  ui_text(ctx, t, f, GRect(s_c.x - s_sz / 2 - 4, s_c.y - h / 2 - h / 5, s_sz + 8, h + 4), GTextAlignmentCenter);
+}
+
+void ui_text(GContext *ctx, const char *text, GFont font, GRect box, int align) {
+  graphics_draw_text(ctx, text, font, box,
+                     (align & TXT_ELLIPSIS) ? GTextOverflowModeTrailingEllipsis : GTextOverflowModeFill,
+                     (GTextAlignment)(align & 3), NULL);
 }
 
 static int isqrt(int v) {
@@ -310,8 +315,7 @@ void icon_draw(GContext *ctx, IconId id, GPoint c, int size, GColor fg, GColor b
     circle(ctx, 11, 20, 5, true);
     graphics_context_set_text_color(ctx, fg);
     GPoint t = P(19, 9);
-    graphics_draw_text(ctx, "A", F(FONT_KEY_GOTHIC_14_BOLD), GRect(t.x, t.y - 4, S(18), 18),
-                       GTextOverflowModeFill, GTextAlignmentCenter, NULL);
+    ui_text(ctx, "A", F(FONT_KEY_GOTHIC_14_BOLD), GRect(t.x, t.y - 4, S(18), 18), GTextAlignmentCenter);
   } else if (id == ICON_MAP) {
     // folded paper map: crisp 2 px outline and folds
 #ifdef PBL_COLOR
@@ -567,8 +571,7 @@ void draw_poi_label(GContext *ctx, GPoint c, int cat, const char *name, GRect pi
   graphics_context_set_text_color(ctx, dark ? GColorWhite : GColorBlack);
   bool left = c.x > pill.origin.x + pill.size.w / 2;   // the name sits on the dot's left
   int tx = left ? pill.origin.x + 4 : c.x + r + 3;
-  graphics_draw_text(ctx, name, g_fonts.chip, GRect(tx, pill.origin.y - 3, pill.size.w - 2 * r - 6, 16),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+  ui_text(ctx, name, g_fonts.chip, GRect(tx, pill.origin.y - 3, pill.size.w - 2 * r - 6, 16), GTextAlignmentLeft | TXT_ELLIPSIS);
 }
 
 #endif

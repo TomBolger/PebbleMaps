@@ -101,10 +101,10 @@ static void draw_card_content(GContext *ctx, GRect card) {
   GTextAlignment al = PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentLeft);
   GRect tr = GRect(card.origin.x + pad, card.origin.y - 2, card.size.w - pad * 2, g_fonts.body_h + 6);
   graphics_context_set_text_color(ctx, C_TEXT);
-  graphics_draw_text(ctx, item->title, g_fonts.body_b, tr, GTextOverflowModeTrailingEllipsis, al, NULL);
+  ui_text(ctx, item->title, g_fonts.body_b, tr, al | TXT_ELLIPSIS);
   GRect sr = GRect(tr.origin.x, card.origin.y + g_fonts.body_h, tr.size.w, g_fonts.small_h * 2 + 4);
   graphics_context_set_text_color(ctx, C_SUBTEXT);
-  graphics_draw_text(ctx, item->sub, g_fonts.small, sr, GTextOverflowModeTrailingEllipsis, al, NULL);
+  ui_text(ctx, item->sub, g_fonts.small, sr, al | TXT_ELLIPSIS);
 #ifndef PBL_ROUND
   char cnt[16];
   snprintf(cnt, sizeof(cnt), "%d/%d", s_sel + 1, s_count);
@@ -112,8 +112,7 @@ static void draw_card_content(GContext *ctx, GRect card) {
   graphics_context_set_fill_color(ctx, C_BLUE);
   graphics_fill_rect(ctx, cr, 8, GCornersAll);
   graphics_context_set_text_color(ctx, GColorWhite);
-  graphics_draw_text(ctx, cnt, g_fonts.chip, GRect(cr.origin.x, cr.origin.y - 2, cr.size.w, 16),
-                     GTextOverflowModeFill, GTextAlignmentCenter, NULL);
+  ui_text(ctx, cnt, g_fonts.chip, GRect(cr.origin.x, cr.origin.y - 2, cr.size.w, 16), GTextAlignmentCenter);
 #endif
 }
 
@@ -125,8 +124,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
                     b.size.w - PBL_IF_ROUND_ELSE(80, 8) - (s_bar.open ? PBL_IF_ROUND_ELSE(0, STRIP_W) : 0), 20);
   draw_card(ctx, top, 10);
   graphics_context_set_text_color(ctx, C_TEXT);
-  graphics_draw_text(ctx, s_title, g_fonts.chip, GRect(top.origin.x + 6, top.origin.y + 1, top.size.w - 12, 18),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+  ui_text(ctx, s_title, g_fonts.chip, GRect(top.origin.x + 6, top.origin.y + 1, top.size.w - 12, 18), GTextAlignmentCenter | TXT_ELLIPSIS);
 
   GRect card = card_rect(b);
   if (s_loaded && s_count) {
@@ -136,9 +134,8 @@ static void canvas_update(Layer *layer, GContext *ctx) {
     draw_card(ctx, card, PBL_IF_ROUND_ELSE(0, 8));
     graphics_context_set_text_color(ctx, C_TEXT);
     int pad = PBL_IF_ROUND_ELSE(26, 6);
-    graphics_draw_text(ctx, s_status, g_fonts.body_b,
-                       GRect(card.origin.x + pad, card.origin.y + 2, card.size.w - pad * 2, card.size.h - 4),
-                       GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+    ui_text(ctx, s_status, g_fonts.body_b,
+                       GRect(card.origin.x + pad, card.origin.y + 2, card.size.w - pad * 2, card.size.h - 4), GTextAlignmentCenter | TXT_ELLIPSIS);
   }
   if (s_bar.open) mapbar_draw(&s_bar, ctx, b);
   else if (s_count) draw_side_tab(ctx, b);   // always beside the middle button
@@ -159,16 +156,12 @@ static void menu_draw_row(GContext *ctx, const Layer *cell, MenuIndex *i, void *
   bool hl = menu_cell_layer_is_highlighted(cell);
   graphics_context_set_text_color(ctx, hl ? GColorWhite : C_TEXT);
 #ifdef PBL_ROUND
-  graphics_draw_text(ctx, item->title, g_fonts.body_b, GRect(18, 2, b.size.w - 36, g_fonts.body_h + 6),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
-  if (hl) graphics_draw_text(ctx, item->sub, g_fonts.small, GRect(18, g_fonts.body_h + 2, b.size.w - 36, g_fonts.small_h * 2 + 4),
-                             GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+  ui_text(ctx, item->title, g_fonts.body_b, GRect(18, 2, b.size.w - 36, g_fonts.body_h + 6), GTextAlignmentCenter | TXT_ELLIPSIS);
+  if (hl) ui_text(ctx, item->sub, g_fonts.small, GRect(18, g_fonts.body_h + 2, b.size.w - 36, g_fonts.small_h * 2 + 4), GTextAlignmentCenter | TXT_ELLIPSIS);
 #else
   icon_draw(ctx, ICON_PIN, GPoint(14, b.size.h / 2), 18, hl ? GColorWhite : C_PIN, hl ? C_BLUE : C_BG);
-  graphics_draw_text(ctx, item->title, g_fonts.body_b, GRect(28, -2, b.size.w - 32, g_fonts.body_h + 6),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
-  graphics_draw_text(ctx, item->sub, g_fonts.small, GRect(28, g_fonts.body_h, b.size.w - 32, g_fonts.small_h + 4),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+  ui_text(ctx, item->title, g_fonts.body_b, GRect(28, -2, b.size.w - 32, g_fonts.body_h + 6), GTextAlignmentLeft | TXT_ELLIPSIS);
+  ui_text(ctx, item->sub, g_fonts.small, GRect(28, g_fonts.body_h, b.size.w - 32, g_fonts.small_h + 4), GTextAlignmentLeft | TXT_ELLIPSIS);
 #endif
 }
 static void menu_select(MenuLayer *m, MenuIndex *i, void *ctx) {

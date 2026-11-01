@@ -361,8 +361,7 @@ static void draw_key(GContext *ctx, GRect r, const char *label, bool pressed, bo
   graphics_context_set_text_color(ctx, text);
   bool word = strlen(label) > 1;
   GFont f = fonts_get_system_font(word ? FONT_KEY_GOTHIC_14_BOLD : FONT_KEY_GOTHIC_18_BOLD);
-  graphics_draw_text(ctx, label, f, GRect(r.origin.x, r.origin.y + (word ? 2 : -2), r.size.w, r.size.h),
-                     GTextOverflowModeFill, GTextAlignmentCenter, NULL);
+  ui_text(ctx, label, f, GRect(r.origin.x, r.origin.y + (word ? 2 : -2), r.size.w, r.size.h), GTextAlignmentCenter);
 }
 
 // Shift: drawn up arrow, outline when off, filled when on, bar underneath for caps lock
@@ -437,9 +436,8 @@ static void draw_key_preview(GContext *ctx, GRect b, GRect kr, KeyHit key) {
   graphics_context_set_fill_color(ctx, C_BLUE);
   graphics_fill_rect(ctx, GRect(head.origin.x + 6, head.origin.y + head.size.h - 5, head.size.w - 12, 2), 0, GCornerNone);
   graphics_context_set_text_color(ctx, GColorBlack);
-  graphics_draw_text(ctx, label, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD),
-                     GRect(head.origin.x, head.origin.y + 1, head.size.w, head.size.h - 6),
-                     GTextOverflowModeFill, GTextAlignmentCenter, NULL);
+  ui_text(ctx, label, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD),
+                     GRect(head.origin.x, head.origin.y + 1, head.size.w, head.size.h - 6), GTextAlignmentCenter);
 }
 
 static void draw_suggestions(GContext *ctx, GRect b) {
@@ -458,11 +456,9 @@ static void draw_suggestions(GContext *ctx, GRect b) {
     int pad = 6, tx = r.origin.x + pad + 16;
     icon_draw(ctx, ICON_PIN, GPoint(r.origin.x + pad + 6, r.origin.y + r.size.h / 2), 14, hl ? GColorWhite : C_PIN, hl ? C_BLUE : GColorWhite);
     graphics_context_set_text_color(ctx, hl ? GColorWhite : GColorBlack);
-    graphics_draw_text(ctx, s_sugg[i].title, tf, GRect(tx, r.origin.y - 1, r.origin.x + r.size.w - tx - pad, 22),
-                       GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    ui_text(ctx, s_sugg[i].title, tf, GRect(tx, r.origin.y - 1, r.origin.x + r.size.w - tx - pad, 22), GTextAlignmentLeft | TXT_ELLIPSIS);
     graphics_context_set_text_color(ctx, hl ? GColorWhite : GColorDarkGray);
-    graphics_draw_text(ctx, s_sugg[i].sub, sf, GRect(tx, r.origin.y + 17, r.origin.x + r.size.w - tx - pad, 18),
-                       GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    ui_text(ctx, s_sugg[i].sub, sf, GRect(tx, r.origin.y + 17, r.origin.x + r.size.w - tx - pad, 18), GTextAlignmentLeft | TXT_ELLIPSIS);
     if (i < n - 1) {
       graphics_context_set_stroke_color(ctx, C_DIVIDER);
       graphics_draw_line(ctx, GPoint(tx, r.origin.y + r.size.h - 1), GPoint(r.origin.x + r.size.w - pad, r.origin.y + r.size.h - 1));
@@ -485,13 +481,13 @@ static void draw_bar(GContext *ctx, GRect b) {
     while (*shown && graphics_text_layout_get_content_size(shown, tf, GRect(0, 0, 1000, 40),
            GTextOverflowModeFill, GTextAlignmentLeft).w > tr.size.w - 4) shown++;
     graphics_context_set_text_color(ctx, GColorBlack);
-    graphics_draw_text(ctx, shown, tf, tr, GTextOverflowModeFill, GTextAlignmentLeft, NULL);
+    ui_text(ctx, shown, tf, tr, GTextAlignmentLeft);
     GSize ts = graphics_text_layout_get_content_size(shown, tf, tr, GTextOverflowModeFill, GTextAlignmentLeft);
     graphics_context_set_fill_color(ctx, C_BLUE);
     graphics_fill_rect(ctx, GRect(tr.origin.x + ts.w + 1, br.origin.y + 5, 2, br.size.h - 10), 0, GCornerNone);
   } else {
     graphics_context_set_text_color(ctx, GColorDarkGray);
-    graphics_draw_text(ctx, s_placeholder, g_fonts.small, tr, GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    ui_text(ctx, s_placeholder, g_fonts.small, tr, GTextAlignmentLeft | TXT_ELLIPSIS);
   }
 }
 

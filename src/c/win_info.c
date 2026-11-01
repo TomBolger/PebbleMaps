@@ -101,8 +101,7 @@ static void draw_header(GContext *ctx, int w, int h) {
     graphics_context_set_fill_color(ctx, GColorBlack);
     graphics_fill_rect(ctx, r, 8, GCornersAll);
     graphics_context_set_text_color(ctx, GColorWhite);
-    graphics_draw_text(ctx, t, g_fonts.chip, GRect(r.origin.x, r.origin.y - 2, r.size.w, 16),
-                       GTextOverflowModeFill, GTextAlignmentCenter, NULL);
+    ui_text(ctx, t, g_fonts.chip, GRect(r.origin.x, r.origin.y - 2, r.size.w, 16), GTextAlignmentCenter);
   }
 }
 
@@ -136,11 +135,10 @@ static int layout(GContext *ctx, GRect b) {
       int cw = graphics_text_layout_get_content_size(c, g_fonts.small, GRect(0, 0, 90, 30), GTextOverflowModeFill, GTextAlignmentLeft).w;
       int x = PBL_IF_ROUND_ELSE((w - (rw + 4 + 5 * (sz + 1) + 4 + cw)) / 2, pad);
       graphics_context_set_text_color(ctx, C_TEXT);
-      graphics_draw_text(ctx, r, f, GRect(x, y - 3, rw + 2, 30), GTextOverflowModeFill, GTextAlignmentLeft, NULL);
+      ui_text(ctx, r, f, GRect(x, y - 3, rw + 2, 30), GTextAlignmentLeft);
       stars(ctx, x + rw + 4, y + (g_fonts.small_h - sz) / 2 + 1, sz, s_rating);
       graphics_context_set_text_color(ctx, C_SUBTEXT);
-      graphics_draw_text(ctx, c, g_fonts.small, GRect(x + rw + 8 + 5 * (sz + 1), y - 3, cw + 2, 30),
-                         GTextOverflowModeFill, GTextAlignmentLeft, NULL);
+      ui_text(ctx, c, g_fonts.small, GRect(x + rw + 8 + 5 * (sz + 1), y - 3, cw + 2, 30), GTextAlignmentLeft);
     }
     y += g_fonts.small_h + 3;
   }
@@ -172,8 +170,7 @@ static int layout(GContext *ctx, GRect b) {
     int x0 = s_dir_btn.origin.x + (bw - lw - 18) / 2;
     icon_draw(ctx, ICON_DIRECTIONS, GPoint(x0 + 7, y + bh / 2), 14, GColorWhite, C_BLUE);
     graphics_context_set_text_color(ctx, GColorWhite);
-    graphics_draw_text(ctx, label, f, GRect(x0 + 18, y + (bh - g_fonts.small_h) / 2 - 4, lw + 4, bh),
-                       GTextOverflowModeFill, GTextAlignmentLeft, NULL);
+    ui_text(ctx, label, f, GRect(x0 + 18, y + (bh - g_fonts.small_h) / 2 - 4, lw + 4, bh), GTextAlignmentLeft);
   }
   y += bh + 4;
   y += divider(ctx, y, w);
@@ -218,8 +215,7 @@ static int layout(GContext *ctx, GRect b) {
     if (when[0]) {
       if (ctx) {
         graphics_context_set_text_color(ctx, C_SUBTEXT);
-        graphics_draw_text(ctx, when, g_fonts.small, GRect(sx + 5 * (sz + 1) + 4, y - 3, w - sx - 5 * (sz + 1) - 8, g_fonts.small_h + 4),
-                           GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+        ui_text(ctx, when, g_fonts.small, GRect(sx + 5 * (sz + 1) + 4, y - 3, w - sx - 5 * (sz + 1) - 8, g_fonts.small_h + 4), GTextAlignmentLeft | TXT_ELLIPSIS);
       }
     }
     y += g_fonts.small_h + 1;
