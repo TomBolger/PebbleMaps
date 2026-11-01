@@ -201,8 +201,7 @@ static void draw_switch(GContext *ctx, GPoint c, bool on, bool hl, bool dim) {
   GColor blue = dim ? PBL_IF_COLOR_ELSE(GColorDarkGray, C_BLUE) : C_BLUE;
   GColor track = on ? (hl ? GColorWhite : (dim ? PBL_IF_COLOR_ELSE(GColorLightGray, C_BLUE) : C_BLUE))
                     : PBL_IF_COLOR_ELSE(GColorLightGray, GColorWhite);
-  graphics_context_set_fill_color(ctx, track);
-  graphics_fill_rect(ctx, r, 7, GCornersAll);
+  ui_fill_rect(ctx, track, r, 7);
   graphics_context_set_stroke_color(ctx, hl ? GColorWhite : C_DIVIDER);
   graphics_draw_round_rect(ctx, r, 7);
   graphics_context_set_fill_color(ctx, on ? (hl ? blue : GColorWhite) : (hl ? blue : PBL_IF_COLOR_ELSE(dim ? GColorDarkGray : GColorBlack, GColorBlack)));
@@ -218,8 +217,7 @@ static int16_t header_h(MenuLayer *m, uint16_t section, void *ctx) {
 
 static void draw_header(GContext *ctx, const Layer *cell, uint16_t section, void *cb) {
   GRect b = layer_get_bounds(cell);
-  graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(GColorLightGray, GColorWhite));
-  graphics_fill_rect(ctx, b, 0, GCornerNone);
+  ui_fill_rect(ctx, PBL_IF_COLOR_ELSE(GColorLightGray, GColorWhite), b, 0);
   graphics_context_set_text_color(ctx, C_TEXT);
   ui_text(ctx, section == 0 ? "SAVED" : "RECENT", g_fonts.chip,
                      GRect(PBL_IF_ROUND_ELSE(0, 6), -2, b.size.w - PBL_IF_ROUND_ELSE(0, 6), 16), PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentLeft));
@@ -431,8 +429,7 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *i, void *cb) {
     int bw = graphics_text_layout_get_content_size("Default", g_fonts.chip, GRect(0, 0, 80, 20),
                                                    GTextOverflowModeFill, GTextAlignmentLeft).w + 14;
     GRect br = GRect(b.size.w - bw - 4, 4, bw, 18);
-    graphics_context_set_fill_color(ctx, hl ? GColorWhite : C_BLUE);
-    graphics_fill_rect(ctx, br, 9, GCornersAll);
+    ui_fill_rect(ctx, hl ? GColorWhite : C_BLUE, br, 9);
     graphics_context_set_text_color(ctx, hl ? C_BLUE : GColorWhite);
     ui_text(ctx, "Default", g_fonts.chip, GRect(br.origin.x, br.origin.y - 2, br.size.w, 18), GTextAlignmentCenter);
   }
@@ -549,8 +546,7 @@ static void select_long_cb(MenuLayer *m, MenuIndex *i, void *ctx) {
 static void header_update(Layer *layer, GContext *ctx) {
   ListWin *lw = *(ListWin **)layer_get_data(layer);
   GRect b = layer_get_bounds(layer);
-  graphics_context_set_fill_color(ctx, header_color(lw->kind));
-  graphics_fill_rect(ctx, b, 0, GCornerNone);
+  ui_fill_rect(ctx, header_color(lw->kind), b, 0);
   GColor tc = (lw->kind == LW_FAVS) ? PBL_IF_COLOR_ELSE(GColorBlack, GColorWhite) : GColorWhite;
   graphics_context_set_text_color(ctx, tc);
   ui_text(ctx, title_for(lw->kind), g_fonts.body_b, GRect(0, -3, b.size.w, g_fonts.body_h + 6), GTextAlignmentCenter | TXT_ELLIPSIS);

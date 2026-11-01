@@ -63,8 +63,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   int ch = card_h(b);
   map_draw(ctx, GRect(0, 0, w, b.size.h - ch), -1);
   GRect card = GRect(0, b.size.h - ch, w, ch);
-  graphics_context_set_fill_color(ctx, C_BG);
-  graphics_fill_rect(ctx, card, 0, GCornerNone);
+  ui_fill_rect(ctx, C_BG, card, 0);
   graphics_context_set_stroke_color(ctx, C_DIVIDER);
   graphics_draw_line(ctx, card.origin, GPoint(w, card.origin.y));
 

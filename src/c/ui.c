@@ -121,6 +121,11 @@ void ui_text(GContext *ctx, const char *text, GFont font, GRect box, int align) 
                      (GTextAlignment)(align & 3), NULL);
 }
 
+void ui_fill_rect(GContext *ctx, GColor color, GRect box, int radius) {
+  graphics_context_set_fill_color(ctx, color);
+  graphics_fill_rect(ctx, box, radius, radius ? GCornersAll : GCornerNone);
+}
+
 static int isqrt(int v) {
   if (v <= 0) return 0;
   int r = v, last;
@@ -306,8 +311,7 @@ void icon_draw(GContext *ctx, IconId id, GPoint c, int size, GColor fg, GColor b
     // a tiny name pill: dot + "A"
     GPoint a = P(1, 9), b = P(39, 31);
     GRect r = GRect(a.x, a.y, b.x - a.x, b.y - a.y);
-    graphics_context_set_fill_color(ctx, GColorWhite);
-    graphics_fill_rect(ctx, r, r.size.h / 2, GCornersAll);
+    ui_fill_rect(ctx, GColorWhite, r, r.size.h / 2);
     graphics_context_set_stroke_color(ctx, fg);
     graphics_context_set_stroke_width(ctx, 1);
     graphics_draw_round_rect(ctx, r, r.size.h / 2);
@@ -560,8 +564,7 @@ GRect poi_label_rect(GPoint c, const char *name, bool left) {
 
 void draw_poi_label(GContext *ctx, GPoint c, int cat, const char *name, GRect pill) {
   bool dark = g_app.dark_map;
-  graphics_context_set_fill_color(ctx, dark ? GColorBlack : GColorWhite);
-  graphics_fill_rect(ctx, pill, pill.size.h / 2, GCornersAll);
+  ui_fill_rect(ctx, dark ? GColorBlack : GColorWhite, pill, pill.size.h / 2);
   graphics_context_set_stroke_color(ctx, dark ? PBL_IF_COLOR_ELSE(GColorDarkGray, GColorWhite) : C_DIVIDER);
   graphics_context_set_stroke_width(ctx, 1);
   graphics_draw_round_rect(ctx, pill, pill.size.h / 2);
@@ -607,8 +610,7 @@ void draw_fab(GContext *ctx, GPoint c, int r, IconId icon, GColor fill) {
 }
 
 void draw_card(GContext *ctx, GRect r, int radius) {
-  graphics_context_set_fill_color(ctx, C_BG);
-  graphics_fill_rect(ctx, r, radius, GCornersAll);
+  ui_fill_rect(ctx, C_BG, r, radius);
   graphics_context_set_stroke_color(ctx, C_DIVIDER);
   graphics_context_set_stroke_width(ctx, 1);
   graphics_draw_round_rect(ctx, r, radius);
@@ -616,8 +618,7 @@ void draw_card(GContext *ctx, GRect r, int radius) {
 
 void draw_map_placeholder(GContext *ctx, GRect r) {
   // a faint grid in the map's own background color (dark maps get a dark grid)
-  graphics_context_set_fill_color(ctx, g_app.dark_map ? PBL_IF_COLOR_ELSE(GColorOxfordBlue, GColorBlack) : GColorWhite);
-  graphics_fill_rect(ctx, r, 0, GCornerNone);
+  ui_fill_rect(ctx, g_app.dark_map ? PBL_IF_COLOR_ELSE(GColorOxfordBlue, GColorBlack) : GColorWhite, r, 0);
   graphics_context_set_stroke_color(ctx, g_app.dark_map ? PBL_IF_COLOR_ELSE(GColorDukeBlue, GColorWhite)
                                                        : PBL_IF_COLOR_ELSE(GColorLightGray, GColorBlack));
   graphics_context_set_stroke_width(ctx, 1);
@@ -740,8 +741,7 @@ void draw_action_strip(GContext *ctx, GRect bounds, const StripIcons *ic) {
   int dy = bounds.size.h / 4;
 #else
   GRect strip = GRect(bounds.size.w - w, 0, w, bounds.size.h);
-  graphics_context_set_fill_color(ctx, C_BG);
-  graphics_fill_rect(ctx, strip, 0, GCornerNone);
+  ui_fill_rect(ctx, C_BG, strip, 0);
   graphics_context_set_stroke_color(ctx, C_DIVIDER);
   graphics_draw_line(ctx, GPoint(strip.origin.x, 0), GPoint(strip.origin.x, bounds.size.h));
   cx = strip.origin.x + w / 2;
@@ -864,8 +864,7 @@ int16_t ui_separator_h(MenuLayer *menu, MenuIndex *index, void *ctx) {
 
 void ui_draw_separator(GContext *ctx, const Layer *cell, MenuIndex *index, void *cb) {
   GRect b = layer_get_bounds(cell);
-  graphics_context_set_fill_color(ctx, C_BG);
-  graphics_fill_rect(ctx, b, 0, GCornerNone);
+  ui_fill_rect(ctx, C_BG, b, 0);
   graphics_context_set_stroke_color(ctx, C_DIVIDER);
   int inset = PBL_IF_ROUND_ELSE(24, 6);
   graphics_draw_line(ctx, GPoint(inset, SEP_PAD), GPoint(b.size.w - inset, SEP_PAD));

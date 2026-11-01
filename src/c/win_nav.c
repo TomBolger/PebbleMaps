@@ -171,8 +171,7 @@ static void draw_map(GContext *ctx, GRect b, GRect visible) {
 static void draw_banner(GContext *ctx, GRect b, int bh) {
   GColor bg = (s_flags & (NAV_NO_GPS | NAV_REROUTING)) ? PBL_IF_COLOR_ELSE(GColorDarkGray, GColorBlack) : C_NAVGREEN;
   if (s_flags & NAV_TRANSIT) bg = PBL_IF_COLOR_ELSE(GColorCobaltBlue, GColorBlack);
-  graphics_context_set_fill_color(ctx, bg);
-  graphics_fill_rect(ctx, GRect(0, 0, b.size.w, bh), 0, GCornerNone);
+  ui_fill_rect(ctx, bg, GRect(0, 0, b.size.w, bh), 0);
   graphics_context_set_text_color(ctx, GColorWhite);
   GColor ghost = PBL_IF_COLOR_ELSE(GColorMintGreen, GColorLightGray);
   const char *text = (s_flags & NAV_REROUTING) ? "Finding a new route..." : s_instr;
@@ -203,8 +202,7 @@ static void draw_banner(GContext *ctx, GRect b, int bh) {
 static void draw_bottom(GContext *ctx, GRect b) {
   int h = bottom_h();
   GRect r = GRect(0, b.size.h - h, b.size.w, h);
-  graphics_context_set_fill_color(ctx, C_BG);
-  graphics_fill_rect(ctx, r, 0, GCornerNone);
+  ui_fill_rect(ctx, C_BG, r, 0);
   graphics_context_set_stroke_color(ctx, C_DIVIDER);
   graphics_draw_line(ctx, r.origin, GPoint(b.size.w, r.origin.y));
   char clk[16] = "";
@@ -240,8 +238,7 @@ static void draw_bottom(GContext *ctx, GRect b) {
 }
 
 static void draw_arrived(GContext *ctx, GRect b) {
-  graphics_context_set_fill_color(ctx, C_NAVGREEN);
-  graphics_fill_rect(ctx, b, 0, GCornerNone);
+  ui_fill_rect(ctx, C_NAVGREEN, b, 0);
   icon_draw(ctx, ICON_FLAG, GPoint(b.size.w / 2, b.size.h / 2 - 34), 40, GColorWhite, C_NAVGREEN);
   graphics_context_set_text_color(ctx, GColorWhite);
   ui_text(ctx, "You've arrived", g_fonts.title, GRect(4, b.size.h / 2 - 8, b.size.w - 8, 34), GTextAlignmentCenter);

@@ -109,8 +109,7 @@ static void draw_card_content(GContext *ctx, GRect card) {
   char cnt[16];
   snprintf(cnt, sizeof(cnt), "%d/%d", s_sel + 1, s_count);
   GRect cr = GRect(card.origin.x + card.size.w - 34, card.origin.y - 20, 30, 16);
-  graphics_context_set_fill_color(ctx, C_BLUE);
-  graphics_fill_rect(ctx, cr, 8, GCornersAll);
+  ui_fill_rect(ctx, C_BLUE, cr, 8);
   graphics_context_set_text_color(ctx, GColorWhite);
   ui_text(ctx, cnt, g_fonts.chip, GRect(cr.origin.x, cr.origin.y - 2, cr.size.w, 16), GTextAlignmentCenter);
 #endif

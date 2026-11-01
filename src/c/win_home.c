@@ -169,8 +169,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
     GRect pill = GRect(6, 6, mf.size.w - 12, ph);
 #endif
 #ifdef PBL_COLOR
-    graphics_context_set_fill_color(ctx, GColorLightGray);
-    graphics_fill_rect(ctx, GRect(pill.origin.x + 1, pill.origin.y + 2, pill.size.w, pill.size.h), ph / 2, GCornersAll);
+    ui_fill_rect(ctx, GColorLightGray, GRect(pill.origin.x + 1, pill.origin.y + 2, pill.size.w, pill.size.h), ph / 2);
 #endif
     draw_card(ctx, pill, ph / 2);
     icon_draw(ctx, ICON_SEARCH, GPoint(pill.origin.x + 14, pill.origin.y + ph / 2), 14, C_TEXT, C_BG);

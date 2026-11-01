@@ -59,8 +59,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   int mh = map_h(b);
   int w = b.size.w - STRIP_W;
   map_draw(ctx, GRect(0, 0, w, mh), -1);
-  graphics_context_set_fill_color(ctx, C_BG);
-  graphics_fill_rect(ctx, GRect(0, mh, w, b.size.h - mh), 0, GCornerNone);
+  ui_fill_rect(ctx, C_BG, GRect(0, mh, w, b.size.h - mh), 0);
   graphics_context_set_stroke_color(ctx, C_DIVIDER);
   graphics_draw_line(ctx, GPoint(0, mh), GPoint(w, mh));
 

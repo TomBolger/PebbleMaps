@@ -82,8 +82,7 @@ static int icon_row(GContext *ctx, IconId icon, const char *t, GFont f, int pad,
 
 static void draw_header(GContext *ctx, int w, int h) {
   if (!s_photos) {
-    graphics_context_set_fill_color(ctx, s_loaded ? poi_color(s_cat) : C_DIVIDER);
-    graphics_fill_rect(ctx, GRect(0, 0, w, h), 0, GCornerNone);
+    ui_fill_rect(ctx, s_loaded ? poi_color(s_cat) : C_DIVIDER, GRect(0, 0, w, h), 0);
     if (s_loaded) icon_draw(ctx, map_cat_icon(s_cat), GPoint(w / 2, h / 2 + PBL_IF_ROUND_ELSE(6, 0)), 26, GColorWhite, poi_color(s_cat));
     return;
   }
@@ -91,15 +90,13 @@ static void draw_header(GContext *ctx, int w, int h) {
     graphics_context_set_compositing_mode(ctx, GCompOpAssign);
     graphics_draw_bitmap_in_rect(ctx, g_map.bmp, GRect((w - g_map.w) / 2, (h - g_map.h) / 2, g_map.w, g_map.h));
   } else {
-    graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(GColorLightGray, GColorWhite));
-    graphics_fill_rect(ctx, GRect(0, 0, w, h), 0, GCornerNone);
+    ui_fill_rect(ctx, PBL_IF_COLOR_ELSE(GColorLightGray, GColorWhite), GRect(0, 0, w, h), 0);
   }
   if (s_photos > 1) {
     char t[12];
     snprintf(t, sizeof(t), "%d/%d", s_photo + 1, s_photos);
     GRect r = GRect(PBL_IF_ROUND_ELSE(w / 2 - 18, w - 40), h - 21, 36, 17);
-    graphics_context_set_fill_color(ctx, GColorBlack);
-    graphics_fill_rect(ctx, r, 8, GCornersAll);
+    ui_fill_rect(ctx, GColorBlack, r, 8);
     graphics_context_set_text_color(ctx, GColorWhite);
     ui_text(ctx, t, g_fonts.chip, GRect(r.origin.x, r.origin.y - 2, r.size.w, 16), GTextAlignmentCenter);
   }
@@ -156,8 +153,7 @@ static int layout(GContext *ctx, GRect b) {
   if (ctx) {
     // highlighted (white ring) once you've scrolled past the photos: Select then opens it
     bool focus = dir_focused();
-    graphics_context_set_fill_color(ctx, focus ? C_BLUE_DARK : C_BLUE);
-    graphics_fill_rect(ctx, s_dir_btn, bh / 2, GCornersAll);
+    ui_fill_rect(ctx, focus ? C_BLUE_DARK : C_BLUE, s_dir_btn, bh / 2);
     if (focus) {
       graphics_context_set_stroke_color(ctx, GColorWhite);
       graphics_context_set_stroke_width(ctx, 2);

@@ -356,8 +356,7 @@ static void draw_key(GContext *ctx, GRect r, const char *label, bool pressed, bo
   GColor fill = pressed ? C_BLUE : accent ? C_BLUE : special ? GColorLightGray : GColorWhite;
   GColor text = (pressed || accent) ? GColorWhite : GColorBlack;
   if (pressed && accent) fill = GColorPictonBlue;
-  graphics_context_set_fill_color(ctx, fill);
-  graphics_fill_rect(ctx, r, 3, GCornersAll);
+  ui_fill_rect(ctx, fill, r, 3);
   graphics_context_set_text_color(ctx, text);
   bool word = strlen(label) > 1;
   GFont f = fonts_get_system_font(word ? FONT_KEY_GOTHIC_14_BOLD : FONT_KEY_GOTHIC_18_BOLD);
@@ -424,17 +423,14 @@ static void draw_key_preview(GContext *ctx, GRect b, GRect kr, KeyHit key) {
   GPoint tp[3] = { { tail_cx - 9, head_bottom - 2 }, { tail_cx + 9, head_bottom - 2 }, { tail_cx, head_bottom + KB_PREVIEW_TAIL } };
   GPath tail = { .num_points = 3, .points = tp };
 
-  graphics_context_set_fill_color(ctx, GColorDarkGray);
-  graphics_fill_rect(ctx, grect_inset(head, GEdgeInsets(-2)), 8, GCornersAll);
+  ui_fill_rect(ctx, GColorDarkGray, grect_inset(head, GEdgeInsets(-2)), 8);
   graphics_context_set_stroke_color(ctx, GColorDarkGray);
   graphics_context_set_stroke_width(ctx, 3);
   gpath_draw_outline(ctx, &tail);
   graphics_context_set_stroke_width(ctx, 1);
-  graphics_context_set_fill_color(ctx, GColorWhite);
-  graphics_fill_rect(ctx, head, 6, GCornersAll);
+  ui_fill_rect(ctx, GColorWhite, head, 6);
   gpath_draw_filled(ctx, &tail);
-  graphics_context_set_fill_color(ctx, C_BLUE);
-  graphics_fill_rect(ctx, GRect(head.origin.x + 6, head.origin.y + head.size.h - 5, head.size.w - 12, 2), 0, GCornerNone);
+  ui_fill_rect(ctx, C_BLUE, GRect(head.origin.x + 6, head.origin.y + head.size.h - 5, head.size.w - 12, 2), 0);
   graphics_context_set_text_color(ctx, GColorBlack);
   ui_text(ctx, label, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD),
                      GRect(head.origin.x, head.origin.y + 1, head.size.w, head.size.h - 6), GTextAlignmentCenter);
@@ -450,8 +446,7 @@ static void draw_suggestions(GContext *ctx, GRect b) {
     GRect r = sugg_row(b, i);
     bool hl = s_sugg_pressed == i;
     if (hl) {
-      graphics_context_set_fill_color(ctx, C_BLUE);
-      graphics_fill_rect(ctx, grect_inset(r, GEdgeInsets(1)), 5, GCornersAll);
+      ui_fill_rect(ctx, C_BLUE, grect_inset(r, GEdgeInsets(1)), 5);
     }
     int pad = 6, tx = r.origin.x + pad + 16;
     icon_draw(ctx, ICON_PIN, GPoint(r.origin.x + pad + 6, r.origin.y + r.size.h / 2), 14, hl ? GColorWhite : C_PIN, hl ? C_BLUE : GColorWhite);
@@ -483,8 +478,7 @@ static void draw_bar(GContext *ctx, GRect b) {
     graphics_context_set_text_color(ctx, GColorBlack);
     ui_text(ctx, shown, tf, tr, GTextAlignmentLeft);
     GSize ts = graphics_text_layout_get_content_size(shown, tf, tr, GTextOverflowModeFill, GTextAlignmentLeft);
-    graphics_context_set_fill_color(ctx, C_BLUE);
-    graphics_fill_rect(ctx, GRect(tr.origin.x + ts.w + 1, br.origin.y + 5, 2, br.size.h - 10), 0, GCornerNone);
+    ui_fill_rect(ctx, C_BLUE, GRect(tr.origin.x + ts.w + 1, br.origin.y + 5, 2, br.size.h - 10), 0);
   } else {
     graphics_context_set_text_color(ctx, GColorDarkGray);
     ui_text(ctx, s_placeholder, g_fonts.small, tr, GTextAlignmentLeft | TXT_ELLIPSIS);
@@ -493,14 +487,12 @@ static void draw_bar(GContext *ctx, GRect b) {
 
 static void update(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
-  graphics_context_set_fill_color(ctx, GColorWhite);
-  graphics_fill_rect(ctx, b, 0, GCornerNone);
+  ui_fill_rect(ctx, GColorWhite, b, 0);
   if (s_hooks.background) s_hooks.background(ctx, b, s_ctx);
   draw_bar(ctx, b);
   draw_suggestions(ctx, b);
 
-  graphics_context_set_fill_color(ctx, GColorDarkGray);
-  graphics_fill_rect(ctx, GRect(0, panel_rect(b).origin.y, b.size.w, b.size.h - panel_rect(b).origin.y), 0, GCornerNone);
+  ui_fill_rect(ctx, GColorDarkGray, GRect(0, panel_rect(b).origin.y, b.size.w, b.size.h - panel_rect(b).origin.y), 0);
   char label[12];
   for (int row = 0; row < KB_ROWS; row++) {
     int count = row_key_count(row);
