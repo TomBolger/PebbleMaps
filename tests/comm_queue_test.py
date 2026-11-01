@@ -47,7 +47,7 @@ int main(void) {
       assert(s_queue[s_q_head].cmd == 1); // in flight, not dropped
       assert(s_queue[(s_q_head + 1) % QUEUE_LEN].cmd == 3); // oldest unsent (2) was dropped
       if (failure) {
-        for (int i = 0; i < 4; i++) outbox_failed(NULL, 0, NULL);
+        for (int i = 0; i < 7; i++) outbox_failed(NULL, 0, NULL);   // gives up after 7 tries
       } else outbox_sent(NULL, NULL);
       assert(s_queue[s_q_head].cmd == 3);
       assert(s_q_count == 3);
