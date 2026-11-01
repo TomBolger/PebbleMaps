@@ -11,7 +11,7 @@ var google = require('./google');
 var dev = require('./dev');
 
 var SIZE = 640;
-var MAX_TILES = 6;
+var MAX_TILES = 8;
 var tiles = [];            // most recent first
 var inflight = {};         // tileId -> [callbacks]
 var prefetchQueue = [];

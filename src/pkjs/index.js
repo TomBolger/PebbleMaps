@@ -16,6 +16,7 @@ var clayConfig = require('./clay-config');
 var clayComponents = require('./clay-components');
 var dev = require('./dev');
 var tiles = require('./tiles');
+var overview = require('./overview');
 tiles.setIdleCheck(function () { return msg.pending() === 0; });
 var voice = require('./voice');
 var jpeg = require('jpeg-js/lib/decoder');
@@ -205,6 +206,34 @@ function mapStyle() {
 // The watch keeps one picture buffer; on roomier watches it is bigger than the
 // screen so panning shows real map right away.
 var buf = { w: 144, h: 168 };
+
+// The overview picture the watch holds (see overview.js): { id, zoom, heading, c } or null
+var ovSent = null;
+var ovCounter = 0;
+var ovDim = [0, 0];
+
+// Send a new overview (one picture sent at low priority after the sharp one) if the view has left the old one
+function sendOverview(seq, token, o, plan, hd) {
+  var want = overview.next(ovSent, o.zoom, plan.c, hd, ovDim[0], ovDim[1]);
+  if (!want || watch.lowmem) return;
+  var oo = { c: want.c, zoom: want.zoom, w: want.w, h: want.h, heading: hd, style: o.style, format: o.format };
+  tiles.get(oo, function (err, img) {
+    if (err || token !== renderToken || seq !== currentMapSeq) return;
+    ovCounter = ovCounter % 30000 + 1;
+    var cur = { id: ovCounter, zoom: want.zoom, heading: hd, c: want.c };
+    ovSent = cur;
+    var chunks = chunksFor(img, [{ x0: 0, x1: img.width, y0: 0, y1: img.height }]);
+    var tag = 'map:' + seq;
+    function check(ok) { if (!ok && ovSent === cur) ovSent = null; }
+    msg.send({ cmd: CMD.MAP_BEGIN, seq: seq, width: img.width, height: img.height, fmt: img.format, stride: img.stride,
+               palette: img.palette, img: cur.id, idx: Math.round(want.c[0]), mode: Math.round(want.c[1]),
+               num: want.zoom, num2: ((Math.round(hd) % 360) + 360) % 360, flags: 2 }, tag, check);
+    chunks.forEach(function (ch, i) {
+      msg.send({ cmd: CMD.MAP_CHUNK, seq: seq, img: cur.id, offset: ch.y, num: ch.xb, stride: ch.stride, data: ch.data,
+                 flags: i === chunks.length - 1 ? 3 : 2 }, tag, check);
+    });
+  });
+}
 
 function outSize(fw, fh) {
   var m = Math.max(0, Math.min(Math.floor((buf.w - fw) / 2), Math.floor((buf.h - fh) / 2)));
@@ -561,7 +590,11 @@ function streamMap(seq, view, markers, done, quiet) {
       ack: true, sw: view.w, sh: view.h,
       onBegin: function () { if (done) done(null); },
       // get the next pictures ready once this one is on the watch
-      onDone: function () { if (!S.economical && token === renderToken) tiles.prefetchAround(o, true); }
+      onDone: function () {
+        if (S.economical || token !== renderToken) return;
+        sendOverview(seq, token, o, plan, hd);
+        tiles.prefetchAround(o, true);
+      }
     });
   });
 }
@@ -1827,6 +1860,7 @@ function onMessage(e) {
     msg.drop('map:');
     msg.drop('mk');
     tiles.cancelPrefetch();
+    ovSent = null;
   }
   try {
     switch (cmd) {
@@ -1840,6 +1874,7 @@ function onMessage(e) {
         watch.lowmem = !!(p.mode & 8);
         watch.inbox = p.idx > 0 ? p.idx : 4096;
         voice.setInbox(watch.inbox);
+        ovDim = watch.lowmem ? [0, 0] : [watch.w >> 1, watch.h >> 1];   // half the screen size (see the watch's map_reserve)
         if (p.text && /^\d+,\d+$/.test(p.text)) {
           buf.w = parseInt(p.text.split(',')[0], 10);
           buf.h = parseInt(p.text.split(',')[1], 10);
