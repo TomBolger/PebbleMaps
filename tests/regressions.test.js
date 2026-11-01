@@ -22,7 +22,7 @@ function timers() {
 }
 
 function phone() {
-  const clock = timers(), messages = [], routes = [], autocomplete = [], details = [], fixes = [], watches = [], stopped = [];
+  const clock = timers(), messages = [], routes = [], autocomplete = [], details = [], fixes = [], watches = [], stopped = [], pois = [];
   const dev = { simLocation: [0, 0] };
   const S = { apiKey: 'dummy', defaultMode: 0, allModeTimes: true, liveLocation: false };
   function Clay() { this.registerComponent = () => {}; }
@@ -30,7 +30,9 @@ function phone() {
     hasKey: () => true,
     computeRoute: (...args) => routes.push({ mode: args[2], cb: args.at(-1) }),
     autocomplete: (...args) => autocomplete.push(args.at(-1)),
-    placeDetails: (id, token, cb) => details.push({ id, token, cb })
+    placeDetails: (id, token, cb) => details.push({ id, token, cb }),
+    searchPois: (loc, radius, cat, cb) => pois.push({ loc, radius, cat, cb }),
+    searchOpen: (loc, radius, cat, cb) => cb(null, [])
   };
   const mocks = {
     './image': {}, './google': google, './settings': { get: () => S, findFavorite: () => -1, favorites: () => [] },
@@ -51,7 +53,7 @@ function phone() {
   };
   vm.runInNewContext(fs.readFileSync(root + '/index.js', 'utf8'), context);
   context.dest = { lat: 0, lng: 0.01, name: 'Destination' };
-  return { context, clock, messages, routes, autocomplete, details, fixes, watches, stopped, dev, S,
+  return { context, pois, clock, messages, routes, autocomplete, details, fixes, watches, stopped, dev, S,
     send: p => context.module.exports._test.onMessage({ payload: p }) };
 }
 
@@ -205,4 +207,43 @@ test('spoken extras follow the chosen language; English keeps "In ..., ..."', ()
   assert.equal(de.words().w.reroute, 'Route wird neu berechnet');
   assert.equal(mk('ja').words().w.reroute, 'Rerouting');
   assert.equal(mk('pl-PL').words().w.reroute, 'Wyznaczanie nowej trasy');
+});
+
+test('zooming out keeps the most popular places, thinned so they do not crowd', () => {
+  const p = phone(), c = p.context;
+  c.poiOpen = false; c.poiMask = 1; c.poiMode = 2;
+  const lat0 = 47.66, lng0 = -117.42;
+  const view = z => ({ center: [lat0, lng0], zoom: z, heading: 0, w: 144, h: 168 });
+  c.maybeFetchPois(view(16));
+  assert.equal(p.pois.length, 1);
+  const first = p.pois[0];
+  // 20 places in popularity order, spread over the fetched circle
+  const list = [];
+  for (let i = 0; i < 20; i++) {
+    const a = i * 2.4, r = first.radius * 0.1 * (1 + i % 5) * 0.9;
+    list.push({ placeId: 'p' + i, name: 'Place ' + i, lat: lat0 + r * Math.cos(a) / 111320,
+      lng: lng0 + r * Math.sin(a) / (111320 * Math.cos(lat0 * Math.PI / 180)), primaryType: 'restaurant' });
+  }
+  first.cb(null, list);
+  const at16 = c.poiMarkers(view(16));
+  assert.ok(at16.length > 0);
+  // zoom out: no new data, still pins, best-ranked first, none crowding
+  for (const z of [15, 14, 13]) {
+    const ms = c.poiMarkers(view(z));
+    assert.ok(ms.length > 0, 'pins at zoom ' + z);
+    for (let i = 0; i < ms.length; i++) for (let j = i + 1; j < ms.length; j++) {
+      assert.ok(Math.abs(ms[i].x - ms[j].x) >= 70 || Math.abs(ms[i].y - ms[j].y) >= 16, 'no overlap at zoom ' + z);
+    }
+    assert.ok(ms.length <= 16);
+    const ranks = Array.from(c.pois).map(pl => pl.rank);
+    assert.equal(ranks[0], 0, 'top-ranked place is kept');
+    assert.deepEqual(ranks, ranks.slice().sort((a, b) => a - b));
+  }
+  assert.equal(c.poiMarkers(view(12)).length, 0);
+  // a wider view is not covered by the small lookup: one new request, with a bigger radius; zoomed back in is covered
+  c.maybeFetchPois(view(14));
+  assert.equal(p.pois.length, 2); assert.ok(p.pois[1].radius > first.radius);
+  p.pois[1].cb(null, []);
+  c.maybeFetchPois(view(16)); c.maybeFetchPois(view(14));
+  assert.equal(p.pois.length, 2);
 });

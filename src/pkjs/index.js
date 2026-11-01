@@ -54,7 +54,8 @@ var DRIVE_AHEAD = 0.22;   // heading up: how far below the middle your arrow sit
 // Live location while a map is showing (off = battery saver: the spot when the map opened)
 var live = { on: false, watchId: null, simTimer: null, stopTimer: null, prev: null, heading: 0, moving: false, lastMove: 0, lastRender: 0 };
 var pois = [];            // places drawn on the home map
-var poiCache = {};        // grid cell -> places
+var poiStore = {};        // placeId -> place + cat, rank (Google's popularity order), seen times
+var poiAreas = [];        // areas already looked up: { cat, open, lat, lng, r, t }
 var poiState = { busy: false, last: 0, failUntil: 0 };
 var info = null;          // place on the info page
 var infoCache = [];
@@ -250,17 +251,47 @@ function placesShown() {
   return watch.lowmem ? Math.min(poiMode, 1) : poiMode;   // Pebble Time / Time Round: dots only
 }
 
+// Which stored places to draw: the most popular kinds-in-turn inside the view, thinned so
+// dots (or their names) don't pile on each other. Works at any zoom from 13 up, using
+// whatever was looked up before, whatever zoom that was at.
+var POI_MIN_ZOOM = 13;
 function poiMarkers(v) {
   var mode = placesShown();
-  if (!mode || v.zoom < 15) return [];
-  var out = [];
-  for (var i = 0; i < pois.length && out.length < 22; i++) {
-    var m = markerFor([pois[i].lat, pois[i].lng], v, P.MK.POI + pois[i].cat, i);
-    if (m && m.x >= -8 && m.y >= -8 && m.x <= v.w + 8 && m.y <= v.h + 8) {
-      if (mode === 2) m.name = fmt.clip(plainText(pois[i].name), watch.lowmem ? 12 : 18).replace(/\x1e/g, ' ');
-      out.push(m);
+  if (!mode || v.zoom < POI_MIN_ZOOM) { pois = []; return []; }
+  var now = Date.now(), byCat = {};
+  Object.keys(poiStore).forEach(function (id) {
+    var pl = poiStore[id];
+    if (poiOpen && !(pl.fo && now - pl.fo < POI_OPEN_TTL)) return;
+    if (!((poiMask >> pl.cat) & 1)) return;
+    var s = screenPos([pl.lat, pl.lng], v);
+    if (s[0] < -8 || s[1] < -8 || s[0] > v.w + 8 || s[1] > v.h + 8) return;
+    (byCat[pl.cat] = byCat[pl.cat] || []).push({ pl: pl, s: s });
+  });
+  // priority: best rank first, taking turns between kinds
+  var order = [];
+  Object.keys(byCat).forEach(function (c) {
+    byCat[c].sort(function (a, b) { return a.pl.rank - b.pl.rank; });
+    byCat[c].forEach(function (e, k) { e.k = k; e.c = +c; order.push(e); });
+  });
+  order.sort(function (a, b) { return a.k - b.k || a.pl.rank - b.pl.rank || a.c - b.c; });
+  var bw = mode === 2 ? 70 : 10, bh = mode === 2 ? 16 : 10, cap = mode === 2 ? 16 : 22;
+  var keep = [], out = [], chosen = [];
+  for (var i = 0; i < order.length && keep.length < cap; i++) {
+    var e = order[i], ok = true;
+    for (var j = 0; j < keep.length; j++) {
+      if (Math.abs(keep[j].s[0] - e.s[0]) < bw && Math.abs(keep[j].s[1] - e.s[1]) < bh) { ok = false; break; }
     }
+    if (ok) keep.push(e);
   }
+  keep.forEach(function (e, idx) {
+    var m = markerFor([e.pl.lat, e.pl.lng], v, P.MK.POI + e.pl.cat, idx);
+    if (!m) return;
+    if (mode === 2) m.name = fmt.clip(plainText(e.pl.name), watch.lowmem ? 12 : 18).replace(/\x1e/g, ' ');
+    out.push(m);
+    chosen.push(e.pl);
+  });
+  pois = chosen;
+  for (var q = 0; q < out.length; q++) out[q].index = q;
   return out;
 }
 
@@ -819,55 +850,59 @@ function poisNotClosed(center, radius, cat, cb) {
   });
 }
 
-var POI_CELL = 512;   // map pixels per lookup area (about one Google map picture)
+var POI_TTL = 600000;       // don't look an area up again within 10 minutes
+var POI_OPEN_TTL = 1200000; // "open now" answers are trusted for 20 minutes
+var POI_MAX_STORE = 600;
+var POI_MAX_RADIUS = 50000; // Google's limit
 
-function poiCell(v, dx, dy) {
-  var z = Math.min(18, v.zoom);
-  var c = geo.project(v.center[0], v.center[1], z);
-  return [z, Math.floor(c[0] / POI_CELL) + (dx || 0), Math.floor(c[1] / POI_CELL) + (dy || 0)];
+// How far (metres) the view reaches from its centre to a corner
+function viewRadius(v) {
+  var mpp = 156543.03 * Math.cos(geo.rad(v.center[0])) / Math.pow(2, v.zoom);
+  return 0.5 * Math.sqrt(v.w * v.w + v.h * v.h) * mpp;
 }
 
-// Gather the places near this view from what we've already looked up, taking turns
-// between the kinds so each one shows up
-function rebuildPois(v) {
-  var lists = enabledCats().map(function (cat) {
-    var l = [];
-    for (var dy = -1; dy <= 1; dy++) {
-      for (var dx = -1; dx <= 1; dx++) {
-        (poiCache[poiCell(v, dx, dy).join(':') + ':' + cat + (poiOpen ? 'o' : '')] || []).forEach(function (pl) { l.push(pl); });
-      }
-    }
-    return l;
-  });
-  var seen = {}, out = [];
-  for (var k = 0; out.length < 80; k++) {
-    var any = false;
-    lists.forEach(function (l) {
-      var pl = l[k];
-      if (!pl) return;
-      any = true;
-      if (seen[pl.placeId] || out.length >= 80) return;
-      seen[pl.placeId] = true;
-      out.push(pl);
-    });
-    if (!any) break;
+// Has this kind already been looked up for this view (recently, and not too coarsely)?
+function poiCovered(v, cat) {
+  var vr = viewRadius(v), now = Date.now();
+  for (var i = 0; i < poiAreas.length; i++) {
+    var a = poiAreas[i];
+    if (a.cat !== cat || a.open !== poiOpen || now - a.t > POI_TTL) continue;
+    var d = geo.haversine(v.center, [a.lat, a.lng]);
+    if (d + vr <= a.r && (a.r <= vr * 8 || a.r >= POI_MAX_RADIUS)) return true;
   }
-  pois = out;
+  return false;
+}
+
+function poiStoreAdd(list, cat, area) {
+  var now = Date.now();
+  list.forEach(function (pl, i) {
+    var old = poiStore[pl.placeId];
+    if (old) {
+      pl.rank = Math.min(old.rank, i);
+      if (old.fo && !area.open) pl.fo = old.fo;
+    } else pl.rank = i;
+    pl.cat = cat;
+    pl.seen = now;
+    if (area.open) pl.fo = now;
+    poiStore[pl.placeId] = pl;
+  });
+  var ids = Object.keys(poiStore);
+  if (ids.length > POI_MAX_STORE) {
+    ids.sort(function (a, b) { return poiStore[a].seen - poiStore[b].seen; });
+    ids.slice(0, ids.length - POI_MAX_STORE + 100).forEach(function (id) { delete poiStore[id]; });
+  }
+  poiAreas.push(area);
+  if (poiAreas.length > 60) poiAreas.shift();
 }
 
 function maybeFetchPois(v) {
-  if (!placesShown() || v.zoom < 15 || !google.hasKey()) return;
-  rebuildPois(v);
-  var cell = poiCell(v);
-  var base = cell.join(':');
-  var oflag = poiOpen ? 'o' : '';
-  var cat = enabledCats().filter(function (c) { return !poiCache[base + ':' + c + oflag]; })[0];
+  if (!placesShown() || v.zoom < POI_MIN_ZOOM || !google.hasKey()) return;
+  var cat = enabledCats().filter(function (c) { return !poiCovered(v, c); })[0];
   if (cat === undefined || poiState.busy || Date.now() < poiState.failUntil) return;
   poiState.busy = true;
-  var z = cell[0];
-  var center = geo.unproject((cell[1] + 0.5) * POI_CELL, (cell[2] + 0.5) * POI_CELL, z);
-  var mpp = 156543.03 * Math.cos(geo.rad(center[0])) / Math.pow(2, z);
-  var radius = Math.max(150, Math.min(3000, mpp * POI_CELL * 0.72));
+  var radius = Math.max(300, Math.min(POI_MAX_RADIUS, viewRadius(v) * 1.5));
+  var center = [v.center[0], v.center[1]];
+  var oflag = poiOpen;
   (oflag ? poisNotClosed : google.searchPois)(center, radius, MAP_CATS[cat], function (err, list) {
     poiState.busy = false;
     if (err) {
@@ -875,13 +910,9 @@ function maybeFetchPois(v) {
       poiState.failUntil = Date.now() + 60000;
       return;
     }
-    list.forEach(function (pl) { pl.cat = cat; });
-    poiCache[base + ':' + cat + oflag] = list;
-    var keys = Object.keys(poiCache);
-    if (keys.length > 150) delete poiCache[keys[0]];
+    poiStoreAdd(list, cat, { cat: cat, open: oflag, lat: center[0], lng: center[1], r: radius, t: Date.now() });
     var st = views.home;
     if (st && lastKind === 'home' && mapVisible) {
-      rebuildPois(st.view);
       sendMarkers(st);
       maybeFetchPois(st.view);   // the next kind, or the area you're looking at now
     }
