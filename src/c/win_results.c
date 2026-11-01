@@ -137,7 +137,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
                        GRect(card.origin.x + pad, card.origin.y + 2, card.size.w - pad * 2, card.size.h - 4), GTextAlignmentCenter | TXT_ELLIPSIS);
   }
   if (s_bar.open) mapbar_draw(&s_bar, ctx, b);
-  else if (s_count) draw_side_tab(ctx, b);   // always beside the middle button
+  else if (s_count) draw_side_tab(ctx, b, false);   // always beside the middle button
 }
 
 // --- List mode -------------------------------------------------------------

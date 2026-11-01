@@ -33,8 +33,45 @@ void pop_to_home(void) {
   }
 }
 
-static GRect map_frame(GRect b) {
-  return GRect(0, 0, b.size.w - STRIP_W, b.size.h);
+// --- Side buttons that hide when not in use ---------------------------------------
+// The map is always requested and drawn full screen; the strip slides over it.
+// s_off: how far the strip has slid out to the right (0 = shown, STRIP_W = gone)
+#define TAB_ZONE 24
+static int s_off, s_target;
+static AppTimer *s_hide_timer, *s_slide_timer;
+
+static void slide_cb(void *ctx) {
+  s_slide_timer = NULL;
+  s_off += clampi(s_target - s_off, -(STRIP_W / 5), STRIP_W / 5);
+  layer_mark_dirty(s_canvas);
+  if (s_off != s_target) s_slide_timer = app_timer_register(40, slide_cb, NULL);
+}
+
+static void slide_to(int target) {
+  s_target = target;
+  if (s_off != target && !s_slide_timer) s_slide_timer = app_timer_register(40, slide_cb, NULL);
+}
+
+static void hide_cb(void *ctx);
+
+// Something happened: start the countdown again
+static void activity(void) {
+  if (s_hide_timer) app_timer_cancel(s_hide_timer);
+  s_hide_timer = g_app.hide_s ? app_timer_register(g_app.hide_s * 1000, hide_cb, NULL) : NULL;
+}
+
+static void hide_cb(void *ctx) {
+  s_hide_timer = NULL;
+  if (s_bar.open || s_gear || ui_toast_active()) activity();   // still in use
+  else slide_to(STRIP_W);
+}
+
+// Bring the strip back; true if it was hidden (that press does nothing else)
+static bool unhide(void) {
+  bool was = s_target != 0;
+  slide_to(0);
+  activity();
+  return was;
 }
 
 static void send_hello(void) {
@@ -75,7 +112,7 @@ static void find_watch_stop(void) {
 // restore = keep the last view the user moved to (when coming back to this screen)
 static void request_map(bool restore) {
   poi_prefs_send();   // which places to draw
-  GRect f = map_frame(layer_get_bounds(window_get_root_layer(s_window)));
+  GRect f = layer_get_bounds(window_get_root_layer(s_window));
   map_request(CMD_HOME_MAP, f.size.w, f.size.h, 15, (restore ? 1 : 0) | (s_follow << 1));
   s_map_requested = true;
   strncpy(s_status, "Finding you", sizeof(s_status));
@@ -117,6 +154,8 @@ static void handle(int cmd, DictionaryIterator *it, void *ctx) {
         if (TOUCH_HW && g_app.touch) touch_service_subscribe(touch_cb, NULL);
       }
 #endif
+      if (!g_app.hide_s) slide_to(0);
+      activity();
       if (!s_hello_sent || !s_map_requested) send_hello();
       if (!g_app.configured) {
         dots_layer_set_running(s_dots, false);
@@ -149,8 +188,8 @@ static void handle(int cmd, DictionaryIterator *it, void *ctx) {
 
 static void canvas_update(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
-  GRect mf = map_frame(b);
-  map_draw(ctx, mf, -1);
+  int vw = b.size.w - STRIP_W + s_off;   // width not covered by the strip right now
+  map_draw(ctx, b, -1);
   if (g_map.complete) dots_layer_set_running(s_dots, false);
 
 #if TOUCH_HW
@@ -166,7 +205,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
     half -= 10;
     GRect pill = GRect(rad - half, py, half * 2, ph);
 #else
-    GRect pill = GRect(6, 6, mf.size.w - 12, ph);
+    GRect pill = GRect(6, 6, vw - 12, ph);
 #endif
 #ifdef PBL_COLOR
     ui_fill_rect(ctx, GColorLightGray, GRect(pill.origin.x + 1, pill.origin.y + 2, pill.size.w, pill.size.h), ph / 2);
@@ -182,13 +221,13 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   // Heading up (map turned to your direction): a compass shows where north is
   if (g_map.bmp && g_map.rheading) {
     int cy = g_app.buttons_ui ? PBL_IF_ROUND_ELSE(b.size.h / 9 + 6, 16) : PBL_IF_ROUND_ELSE(b.size.h / 9 + g_fonts.small_h + 26, g_fonts.small_h + 34);
-    draw_compass(ctx, GPoint(PBL_IF_ROUND_ELSE(mf.size.w / 2 + 10, 18), cy), g_map.rheading);
+    draw_compass(ctx, GPoint(PBL_IF_ROUND_ELSE(vw / 2 + 10, 18), cy), g_map.rheading);
   }
 
   // Status bubble
   if (s_status[0] && !g_map.complete) {
     int sh = g_fonts.small_h + 8;
-    GRect sbx = GRect(6, mf.size.h - sh - PBL_IF_ROUND_ELSE(34, 8), mf.size.w - 12, sh);
+    GRect sbx = GRect(6, b.size.h - sh - PBL_IF_ROUND_ELSE(34, 8), vw - 12, sh);
 #ifdef PBL_ROUND
     sbx.origin.x += 14;
     sbx.size.w -= 28;
@@ -198,22 +237,25 @@ static void canvas_update(Layer *layer, GContext *ctx) {
     ui_text(ctx, s_status, g_fonts.small_b, GRect(sbx.origin.x + 2, sbx.origin.y + 1, sbx.size.w - 4, sh), GTextAlignmentCenter | TXT_ELLIPSIS);
   }
 
+  GRect sb = GRect(0, 0, b.size.w + s_off, b.size.h);   // where the strip is drawn: slid right by s_off
   if (s_bar.open) {
     mapbar_draw(&s_bar, ctx, b);
+  } else if (s_off >= STRIP_W) {
+    draw_side_tab(ctx, b, g_app.dark_map);   // hidden: just the tab
   } else if (s_gear) {
     // options: following you (top, with dots), Places or map controls (middle), places on the map (bottom)
     StripIcons ic = { .up = follow_icon(), .up_color = C_BLUE, .up_page = s_follow, .up_pages = FOLLOW_COUNT,
                       .select = g_app.buttons_ui ? ICON_EXPLORE : ICON_MOVE, .select_plain = true,
                       .down = ICON_POI_NAMES };
-    draw_action_strip(ctx, b, &ic);
+    draw_action_strip(ctx, sb, &ic);
   } else if (g_app.buttons_ui) {
     StripIcons ic = { .up = ICON_MOVE, .select = g_app.has_mic ? ICON_MIC : ICON_SEARCH,
                       .down = ICON_GEAR, .select_color = C_BLUE };
-    draw_action_strip(ctx, b, &ic);
+    draw_action_strip(ctx, sb, &ic);
   } else {
     StripIcons ic = { .up = ICON_GEAR, .select = g_app.has_mic ? ICON_MIC : ICON_SEARCH,
                       .down = ICON_EXPLORE, .select_color = C_BLUE, .down_color = C_PIN };
-    draw_action_strip(ctx, b, &ic);
+    draw_action_strip(ctx, sb, &ic);
   }
 }
 
@@ -223,7 +265,7 @@ static int s_ac_id;
 static int s_ac_shown_id;
 static bool s_ac_new_session;
 
-static void kb_background(GContext *ctx, GRect b, void *c) { map_draw(ctx, map_frame(b), -1); }
+static void kb_background(GContext *ctx, GRect b, void *c) { map_draw(ctx, b, -1); }
 
 static void kb_handler(int cmd, DictionaryIterator *it, void *ctx) {
   if (cmd != CMD_LIST || tuple_int(it, MESSAGE_KEY_num, -1) != LIST_SUGGEST) return;
@@ -313,6 +355,7 @@ static void cycle_follow(void) {
 }
 
 static void bar_cb(MapBarEvent ev, void *ctx) {
+  activity();
   layer_mark_dirty(s_canvas);
 }
 
@@ -322,6 +365,7 @@ static void gear_close(void) {
   if (s_gear_timer) app_timer_cancel(s_gear_timer);
   s_gear_timer = NULL;
   if (s_canvas) layer_mark_dirty(s_canvas);
+  activity();
 }
 static void gear_timeout(void *ctx) {
   s_gear_timer = NULL;
@@ -361,6 +405,7 @@ static void gear_press(ButtonId b) {
 
 // --- Buttons ---------------------------------------------------------------
 static void press(ButtonId b) {
+  if (unhide()) return;   // hidden: any button only brings the side buttons back (Back too)
   if (mapbar_button(&s_bar, b)) return;
   if (s_gear) { gear_press(b); return; }
   if (!g_app.configured && b != BUTTON_ID_BACK) { show_setup(); return; }
@@ -383,6 +428,7 @@ static void select_click(ClickRecognizerRef r, void *ctx) { press(BUTTON_ID_SELE
 static void down_click(ClickRecognizerRef r, void *ctx) { press(BUTTON_ID_DOWN); }
 static void back_click(ClickRecognizerRef r, void *ctx) { press(BUTTON_ID_BACK); }
 static void zoom(int action) {
+  activity();
   if (!g_app.configured) return;
   map_adjust(action, 0, 0);
   mapbar_poke(&s_bar);
@@ -390,6 +436,7 @@ static void zoom(int action) {
 static void up_long(ClickRecognizerRef r, void *ctx) { zoom(ADJ_ZOOM_IN); }
 static void down_long(ClickRecognizerRef r, void *ctx) { zoom(ADJ_ZOOM_OUT); }
 static void select_long(ClickRecognizerRef r, void *ctx) {
+  activity();
   if (!g_app.configured) { show_setup(); return; }
   map_adjust(ADJ_RESET, 0, 0);
   ui_toast(s_window, "Back to you");
@@ -407,14 +454,17 @@ static void click_config(void *ctx) {
 
 // --- Touch (Pebble Time 2 / Round 2) ----------------------------------------
 static void touch_cb(const TouchEvent *e, void *ctx) {
-  if (maptouch_event(&s_touch, e)) return;
-  if (e->type != TouchEvent_Liftoff || e->non_navigational) return;
+  activity();
   GRect b = layer_get_bounds(window_get_root_layer(s_window));
-  if (e->x >= b.size.w - STRIP_W) {
+  // the strip (or, hidden, the edge where its tab is) is not part of the map
+  if (!s_touch.down && e->x >= b.size.w - (s_target ? TAB_ZONE : STRIP_W)) {
+    if (e->type != TouchEvent_Liftoff || e->non_navigational) return;
     if (e->y < b.size.h / 3) press(BUTTON_ID_UP);
     else if (e->y > b.size.h * 2 / 3) press(BUTTON_ID_DOWN);
     else press(BUTTON_ID_SELECT);
+    return;
   }
+  maptouch_event(&s_touch, e);
 }
 
 static void map_tap(GPoint p, void *ctx) {
@@ -422,7 +472,7 @@ static void map_tap(GPoint p, void *ctx) {
   bool in_pill = !s_bar.open && !g_app.buttons_ui && p.y < g_fonts.small_h + 20 + PBL_IF_ROUND_ELSE(24, 0);
   if (!in_pill) {
     // a place on the map: its photos, hours and reviews
-    int poi = map_poi_near(p, map_frame(layer_get_bounds(s_canvas)), 18);
+    int poi = map_poi_near(p, layer_get_bounds(s_canvas), 18);
     if (poi >= 0) info_window_push(SRC_POI, poi, NULL);
     return;
   }
@@ -442,17 +492,18 @@ static void window_load(Window *window) {
   s_canvas = layer_create(b);
   layer_set_update_proc(s_canvas, canvas_update);
   layer_add_child(root, s_canvas);
-  GRect mf = map_frame(b);
-  s_dots = dots_layer_create(GRect(0, mf.size.h / 2 - 20, mf.size.w, 40));
+  s_dots = dots_layer_create(GRect(0, b.size.h / 2 - 20, b.size.w, 40));
   layer_add_child(root, s_dots);
   dots_layer_set_running(s_dots, true);
   if (persist_exists(PERSIST_FOLLOW)) s_follow = clampi(persist_read_int(PERSIST_FOLLOW), 0, FOLLOW_COUNT - 1);
-  mapbar_init(&s_bar, s_canvas, mf.size, ICON_NONE, ICON_NONE, bar_cb, NULL);
-  maptouch_init(&s_touch, mf, map_tap, NULL, &s_bar);
+  mapbar_init(&s_bar, s_canvas, b.size, ICON_NONE, ICON_NONE, bar_cb, NULL);
+  maptouch_init(&s_touch, b, map_tap, NULL, &s_bar);
 }
 
 static void window_appear(Window *window) {
   comm_set_handler(handle, NULL);
+  s_off = s_target = 0;   // coming back: the side buttons are shown again
+  activity();
   map_set_observer(s_canvas);
   if (TOUCH_HW && g_app.touch) touch_service_subscribe(touch_cb, NULL);
   if (g_app.status_known && g_app.configured) {
@@ -472,6 +523,9 @@ static void window_disappear(Window *window) {
   ui_toast_cancel();
   gear_close();
   mapbar_deinit(&s_bar);
+  if (s_hide_timer) app_timer_cancel(s_hide_timer);
+  if (s_slide_timer) app_timer_cancel(s_slide_timer);
+  s_hide_timer = s_slide_timer = NULL;
   maptouch_deinit(&s_touch);
   if (g_app.touch_hw) touch_service_unsubscribe();
 }

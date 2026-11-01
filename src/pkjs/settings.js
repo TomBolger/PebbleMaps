@@ -57,6 +57,8 @@ function get() {
     liveLocation: bool(c.liveLocation, true),
     disableTouch: bool(c.disableTouch, false),
     nonTouchUI: bool(c.nonTouchUI, false),
+    autoHide: bool(c.autoHide, true),
+    hideAfter: [5, 10, 20, 30].indexOf(parseInt(c.hideAfter, 10)) >= 0 ? parseInt(c.hideAfter, 10) : 10,
     textSize: (c.textSize === undefined || c.textSize === '' || c.textSize === 'auto') ? 3 : (parseInt(c.textSize, 10) || 0)
   };
 }

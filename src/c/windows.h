@@ -21,6 +21,9 @@ void poi_prefs_send(void);
 // Touch settings from the phone (bit 0 touch off, bit 1 button layout)
 #define PERSIST_TOUCH_PREFS 9
 void touch_prefs_apply(int prefs);
+// Seconds of non-use before the home screen's side buttons slide away (0 = never; kept on the watch)
+#define PERSIST_HIDE_S 10
+void hide_prefs_apply(int secs);
 // A text page filled in by the phone (sends cmd with idx; shows CMD_INFO_DATA)
 void text_page_push(IconId icon, const char *title, int cmd, int idx);
 void list_window_push(ListKind kind, int arg);

@@ -56,6 +56,11 @@ void touch_prefs_apply(int prefs) {
   }
 }
 
+void hide_prefs_apply(int secs) {
+  g_app.hide_s = secs;
+  if (!persist_exists(PERSIST_HIDE_S) || persist_read_int(PERSIST_HIDE_S) != secs) persist_write_int(PERSIST_HIDE_S, secs);
+}
+
 // --- Places on the main map: on/off, names, which kinds (kept on the watch) ------
 #define PERSIST_POI_PREFS 7
 void poi_prefs_load(void) {
@@ -156,6 +161,7 @@ static void init(void) {
   g_app.touch_hw = TOUCH_HW && touch_service_is_enabled();
   touch_prefs_apply(persist_exists(PERSIST_TOUCH_PREFS) ? persist_read_int(PERSIST_TOUCH_PREFS) : 0);
   comm_init();
+  g_app.hide_s = persist_exists(PERSIST_HIDE_S) ? persist_read_int(PERSIST_HIDE_S) : 10;
   poi_prefs_load();
   map_reserve();
   home_window_push();

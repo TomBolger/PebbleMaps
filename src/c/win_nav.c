@@ -316,7 +316,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   }
   if (s_bar.open) mapbar_draw(&s_bar, ctx, b);
   else if (s_menu_open) draw_menu(ctx, b);
-  else draw_side_tab(ctx, b);   // always beside the middle button
+  else draw_side_tab(ctx, b, false);   // always beside the middle button
   if (s_muted && !s_menu_open && !s_bar.open && cards) {
     icon_draw(ctx, ICON_MUTE, GPoint(b.size.w - PBL_IF_ROUND_ELSE(40, 12), b.size.h - bot - 12), 14, C_RED, C_BG);
   }

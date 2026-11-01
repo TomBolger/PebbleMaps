@@ -101,7 +101,7 @@ typedef struct {
   int up_page, up_pages; // option dots under the top icon (up_pages > 1)
 } StripIcons;
 // Small black half-circle on the right edge: "press Select for options"
-void draw_side_tab(GContext *ctx, GRect bounds);
+void draw_side_tab(GContext *ctx, GRect bounds, bool light);   // light: white tab (for dark maps)
 // Half circle with an "i" on a list row's right edge (Select for more info)
 void draw_info_tab(GContext *ctx, GRect cell, bool hl);
 void draw_action_strip(GContext *ctx, GRect bounds, const StripIcons *icons);
@@ -109,6 +109,7 @@ void draw_action_strip(GContext *ctx, GRect bounds, const StripIcons *icons);
 // Toast banner (one at a time, attached to a window)
 void ui_toast(Window *window, const char *text);
 void ui_toast_cancel(void);
+bool ui_toast_active(void);
 
 // Fill a (rounded) rectangle in one colour
 void ui_fill_rect(GContext *ctx, GColor color, GRect box, int radius);

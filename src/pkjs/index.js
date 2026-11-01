@@ -82,7 +82,8 @@ function sendStatus() {
     num: google.hasKey() ? 1 : 0,
     mode: S.defaultMode,
     flags: (S.imperial ? 1 : 0) | (S.vibrate ? 2 : 0) | ((S.textSize & 3) << 2) | (S.mapStyle === 'dark' ? 16 : 0) |
-      (S.disableTouch ? 32 : 0) | ((S.nonTouchUI || S.disableTouch) ? 64 : 0)
+      (S.disableTouch ? 32 : 0) | ((S.nonTouchUI || S.disableTouch) ? 64 : 0) |
+      ((S.autoHide ? S.hideAfter : 0) << 7)   // bits 7+: seconds before the side buttons hide (0 = never)
   });
 }
 

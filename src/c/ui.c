@@ -752,14 +752,14 @@ void draw_action_strip(GContext *ctx, GRect bounds, const StripIcons *ic) {
   if (ic->down) icon_draw(ctx, ic->down, GPoint(cx, cy + dy), isz, or_default(ic->down_color, C_ICON), C_BG);
 }
 
-void draw_side_tab(GContext *ctx, GRect bounds) {
+void draw_side_tab(GContext *ctx, GRect bounds, bool light) {
   int r = PBL_IF_ROUND_ELSE(16, 14);
   GPoint c = GPoint(bounds.origin.x + bounds.size.w + PBL_IF_ROUND_ELSE(0, 2), bounds.origin.y + bounds.size.h / 2);
 #ifdef PBL_COLOR
   graphics_context_set_antialiased(ctx, true);
 #endif
-  ui_fill_circle(ctx, GColorBlack, c, r);
-  graphics_context_set_fill_color(ctx, GColorWhite);
+  ui_fill_circle(ctx, light ? GColorWhite : GColorBlack, c, r);
+  graphics_context_set_fill_color(ctx, light ? GColorBlack : GColorWhite);
   for (int i = -1; i <= 1; i++) graphics_fill_circle(ctx, GPoint(c.x - r / 2 - 1, c.y + i * 6), 1);
 }
 
@@ -796,6 +796,8 @@ void ui_toast_cancel(void) {
   if (s_toast_timer) app_timer_cancel(s_toast_timer);
   toast_hide(NULL);
 }
+
+bool ui_toast_active(void) { return s_toast != NULL; }
 
 void ui_toast(Window *window, const char *text) {
   ui_toast_cancel();

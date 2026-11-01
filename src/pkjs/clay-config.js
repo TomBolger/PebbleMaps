@@ -126,6 +126,27 @@ function config() {
         },
         { type: 'heading', defaultValue: 'Display', size: 4 },
         {
+          type: 'toggle',
+          messageKey: 'autoHide',
+          id: 'autoHide',
+          label: 'Hide the side buttons when not in use',
+          description: 'The side buttons slide away on the map screen, leaving a small tab. Press any button (or tap the tab) to bring them back.',
+          defaultValue: true
+        },
+        {
+          type: 'select',
+          messageKey: 'hideAfter',
+          id: 'hideAfter',
+          label: 'Hide after',
+          defaultValue: '10',
+          options: [
+            { label: '5 seconds', value: '5' },
+            { label: '10 seconds', value: '10' },
+            { label: '20 seconds', value: '20' },
+            { label: '30 seconds', value: '30' }
+          ]
+        },
+        {
           type: 'select',
           messageKey: 'textSize',
           label: 'Text size on the watch',
@@ -234,6 +255,12 @@ function customFn() {
     var style = clayConfig.getItemById('mapStyle');
     if (style && ud.color === false) style.hide();
     // Touch settings: only for watches with a touch screen
+    var ah = clayConfig.getItemById('autoHide'), ha = clayConfig.getItemById('hideAfter');
+    if (ah && ha) {
+      var ahSync = function () { if (ah.get()) ha.enable(); else ha.disable(); };
+      ah.on('change', ahSync);
+      ahSync();
+    }
     var info = clayConfig.meta && clayConfig.meta.activeWatchInfo;
     var plat = info && info.platform;
     var off = clayConfig.getItemById('disableTouch'), ui = clayConfig.getItemById('nonTouchUI');

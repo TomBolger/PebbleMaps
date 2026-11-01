@@ -75,7 +75,9 @@
       "liveLocation",
       "disableTouch",
       "nonTouchUI",
-      "economical"
+      "economical",
+      "autoHide",
+      "hideAfter"
     ],
     "resources": {
       "media": [

@@ -137,6 +137,7 @@ typedef struct {
   bool poi_names;      // ...with their names
   uint16_t poi_mask;   // which kinds of places (bit per MAP_CAT)
   bool open_now;       // open places only: on the map, in Places lists and in searches
+  uint8_t hide_s;      // seconds before the home screen's side buttons hide (0 = never)
   uint16_t inbox_size;
 } AppState;
 
