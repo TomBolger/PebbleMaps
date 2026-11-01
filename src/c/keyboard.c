@@ -353,8 +353,8 @@ static void activate(KeyHit hit) {
 
 // --- Drawing --------------------------------------------------------------------------
 static void draw_key(GContext *ctx, GRect r, const char *label, bool pressed, bool special, bool accent) {
-  GColor fill = pressed ? C_BLUE : accent ? C_BLUE : special ? GColorLightGray : GColorWhite;
-  GColor text = (pressed || accent) ? GColorWhite : GColorBlack;
+  GColor fill = pressed ? C_BLUE : accent ? C_BLUE : special ? C_KEY_SPECIAL : C_KEY;
+  GColor text = (pressed || accent) ? GColorWhite : C_TEXT;
   if (pressed && accent) fill = GColorPictonBlue;
   ui_fill_rect(ctx, fill, r, 3);
   graphics_context_set_text_color(ctx, text);
@@ -449,10 +449,10 @@ static void draw_suggestions(GContext *ctx, GRect b) {
       ui_fill_rect(ctx, C_BLUE, grect_inset(r, GEdgeInsets(1)), 5);
     }
     int pad = 6, tx = r.origin.x + pad + 16;
-    icon_draw(ctx, ICON_PIN, GPoint(r.origin.x + pad + 6, r.origin.y + r.size.h / 2), 14, hl ? GColorWhite : C_PIN, hl ? C_BLUE : GColorWhite);
-    graphics_context_set_text_color(ctx, hl ? GColorWhite : GColorBlack);
+    icon_draw(ctx, ICON_PIN, GPoint(r.origin.x + pad + 6, r.origin.y + r.size.h / 2), 14, hl ? GColorWhite : C_PIN, hl ? C_BLUE : C_BG);
+    graphics_context_set_text_color(ctx, hl ? GColorWhite : C_TEXT);
     ui_text(ctx, s_sugg[i].title, tf, GRect(tx, r.origin.y - 1, r.origin.x + r.size.w - tx - pad, 22), GTextAlignmentLeft | TXT_ELLIPSIS);
-    graphics_context_set_text_color(ctx, hl ? GColorWhite : GColorDarkGray);
+    graphics_context_set_text_color(ctx, hl ? GColorWhite : C_HINT);
     ui_text(ctx, s_sugg[i].sub, sf, GRect(tx, r.origin.y + 17, r.origin.x + r.size.w - tx - pad, 18), GTextAlignmentLeft | TXT_ELLIPSIS);
     if (i < n - 1) {
       graphics_context_set_stroke_color(ctx, C_DIVIDER);
@@ -468,31 +468,31 @@ static void draw_bar(GContext *ctx, GRect b) {
   graphics_context_set_stroke_width(ctx, 2);
   graphics_draw_round_rect(ctx, grect_inset(br, GEdgeInsets(1)), br.size.h / 2 - 1);
   graphics_context_set_stroke_width(ctx, 1);
-  icon_draw(ctx, ICON_SEARCH, GPoint(br.origin.x + 13, br.origin.y + br.size.h / 2), 13, C_TEXT, GColorWhite);
+  icon_draw(ctx, ICON_SEARCH, GPoint(br.origin.x + 13, br.origin.y + br.size.h / 2), 13, C_TEXT, C_BG);
   GFont tf = g_fonts.small_b;
   GRect tr = GRect(br.origin.x + 24, br.origin.y + (br.size.h - g_fonts.small_h) / 2 - 3, br.size.w - 34, g_fonts.small_h + 4);
   if (s_text[0]) {
     const char *shown = s_text;   // keep the end (where you type) visible
     while (*shown && graphics_text_layout_get_content_size(shown, tf, GRect(0, 0, 1000, 40),
            GTextOverflowModeFill, GTextAlignmentLeft).w > tr.size.w - 4) shown++;
-    graphics_context_set_text_color(ctx, GColorBlack);
+    graphics_context_set_text_color(ctx, C_TEXT);
     ui_text(ctx, shown, tf, tr, GTextAlignmentLeft);
     GSize ts = graphics_text_layout_get_content_size(shown, tf, tr, GTextOverflowModeFill, GTextAlignmentLeft);
     ui_fill_rect(ctx, C_BLUE, GRect(tr.origin.x + ts.w + 1, br.origin.y + 5, 2, br.size.h - 10), 0);
   } else {
-    graphics_context_set_text_color(ctx, GColorDarkGray);
+    graphics_context_set_text_color(ctx, C_HINT);
     ui_text(ctx, s_placeholder, g_fonts.small, tr, GTextAlignmentLeft | TXT_ELLIPSIS);
   }
 }
 
 static void update(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
-  ui_fill_rect(ctx, GColorWhite, b, 0);
+  ui_fill_rect(ctx, C_BG, b, 0);
   if (s_hooks.background) s_hooks.background(ctx, b, s_ctx);
   draw_bar(ctx, b);
   draw_suggestions(ctx, b);
 
-  ui_fill_rect(ctx, GColorDarkGray, GRect(0, panel_rect(b).origin.y, b.size.w, b.size.h - panel_rect(b).origin.y), 0);
+  ui_fill_rect(ctx, C_KEY_PANEL, GRect(0, panel_rect(b).origin.y, b.size.w, b.size.h - panel_rect(b).origin.y), 0);
   char label[12];
   for (int row = 0; row < KB_ROWS; row++) {
     int count = row_key_count(row);
@@ -507,12 +507,12 @@ static void update(Layer *layer, GContext *ctx) {
               GRect(0, 0, 200, 20), GTextOverflowModeFill, GTextAlignmentLeft).w > kr.size.w - 4) {
         // label doesn't fit (round screens): show a magnifier instead
         draw_key(ctx, kr, "", pressed, special, accent);
-        icon_draw(ctx, ICON_SEARCH, grect_center_point(&kr), 14, (pressed || accent) ? GColorWhite : GColorBlack, C_BLUE);
+        icon_draw(ctx, ICON_SEARCH, grect_center_point(&kr), 14, (pressed || accent) ? GColorWhite : C_TEXT, C_BLUE);
         continue;
       }
       if (key.kind == KeyShift && !s_symbols) {
         draw_key(ctx, kr, "", pressed, special, accent);
-        draw_shift_arrow(ctx, kr, (pressed || accent) ? GColorWhite : GColorBlack, s_shift || s_caps_lock, s_caps_lock);
+        draw_shift_arrow(ctx, kr, (pressed || accent) ? GColorWhite : C_TEXT, s_shift || s_caps_lock, s_caps_lock);
         continue;
       }
       key_label(key, label, sizeof(label));
@@ -637,7 +637,7 @@ void keyboard_window_push(const char *placeholder, const char *action_label, con
   if (hooks) s_hooks = *hooks;
   s_ctx = ctx;
   s_window = window_create();
-  window_set_background_color(s_window, GColorWhite);
+  window_set_background_color(s_window, C_BG);
   window_set_click_config_provider(s_window, click_config);
   window_set_window_handlers(s_window, (WindowHandlers){
     .load = window_load, .appear = window_appear,

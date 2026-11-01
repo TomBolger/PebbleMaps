@@ -12,15 +12,39 @@
 #define C_GREEN     PBL_IF_COLOR_ELSE(GColorIslamicGreen, GColorBlack)
 #define C_NAVGREEN  PBL_IF_COLOR_ELSE(GColorJaegerGreen, GColorBlack)
 #define C_NAVGREEN_DK PBL_IF_COLOR_ELSE(GColorDarkGreen, GColorBlack)
-#define C_TEXT      PBL_IF_COLOR_ELSE(GColorBlack, GColorBlack)
-#define C_SUBTEXT   GColorBlack
-#define C_ICON      PBL_IF_COLOR_ELSE(GColorBlack, GColorBlack)
+// Neutral colors: runtime values on color watches (dark theme when the map is dark)
+#ifdef PBL_COLOR
+extern GColor g_th[12];
+#define C_BG g_th[0]
+#define C_TEXT g_th[1]
+#define C_ICON g_th[1]
+#define C_SUBTEXT g_th[2]
+#define C_DIVIDER g_th[3]
+#define C_MAPBG g_th[0]
+#define C_ACCENT g_th[4]
+#define C_HINT g_th[5]
+#define C_GREEN_T g_th[6]
+#define C_RED_T g_th[7]
+#define C_STAR_EDGE g_th[8]
+#define C_KEY g_th[9]
+#define C_KEY_SPECIAL g_th[10]
+#define C_KEY_PANEL g_th[11]
+#else
+#define C_BG GColorWhite
+#define C_TEXT GColorBlack
+#define C_ICON GColorBlack
+#define C_SUBTEXT GColorBlack
+#define C_DIVIDER GColorBlack
+#define C_MAPBG GColorWhite
+#define C_ACCENT GColorBlack
+#define C_HINT GColorBlack
+#define C_GREEN_T GColorBlack
+#define C_RED_T GColorBlack
+#define C_STAR_EDGE GColorBlack
+#endif
+void theme_apply(void);
 #define C_STAR      PBL_IF_COLOR_ELSE(GColorYellow, GColorBlack)
-#define C_STAR_EDGE PBL_IF_COLOR_ELSE(GColorWindsorTan, GColorBlack)
 #define C_PIN       PBL_IF_COLOR_ELSE(GColorRed, GColorBlack)
-#define C_BG        GColorWhite
-#define C_DIVIDER   PBL_IF_COLOR_ELSE(GColorLightGray, GColorBlack)
-#define C_MAPBG     PBL_IF_COLOR_ELSE(GColorWhite, GColorWhite)
 
 typedef enum {
   ICON_NONE = 0,

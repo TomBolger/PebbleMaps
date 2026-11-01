@@ -74,7 +74,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
     graphics_context_set_text_color(ctx, C_RED);
     ui_text(ctx, s_via[0] ? s_via : "No route found", g_fonts.small_b, GRect(x, y + 2, tw, ch - 4), al | TXT_ELLIPSIS);
   } else if (s_loaded) {
-    GColor dc = s_traffic == 2 ? C_RED : (s_traffic == 1 ? PBL_IF_COLOR_ELSE(GColorOrange, GColorBlack) : C_GREEN);
+    GColor dc = s_traffic == 2 ? C_RED : (s_traffic == 1 ? PBL_IF_COLOR_ELSE(GColorOrange, GColorBlack) : C_GREEN_T);
     if (s_mode != MODE_DRIVE) dc = C_BLUE;
     graphics_context_set_text_color(ctx, dc);
 #ifdef PBL_ROUND

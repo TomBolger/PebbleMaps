@@ -208,7 +208,7 @@ static void draw_bottom(GContext *ctx, GRect b) {
   char clk[16] = "";
   if (s_arrive) format_clock(s_arrive, clk, sizeof(clk));
 #ifdef PBL_ROUND
-  graphics_context_set_text_color(ctx, C_GREEN);
+  graphics_context_set_text_color(ctx, C_GREEN_T);
   ui_text(ctx, s_remain, g_fonts.small_b, GRect(24, r.origin.y + 1, b.size.w - 48, g_fonts.small_h + 4), GTextAlignmentCenter | TXT_ELLIPSIS);
   if (clk[0]) {
     char arr[32];
@@ -226,7 +226,7 @@ static void draw_bottom(GContext *ctx, GRect b) {
   for (char *q = t; *q && !sep; q++) if (q[0] == ' ' && !strncmp(q + 1, "·", strlen("·")) && q[1 + strlen("·")] == ' ') sep = q;
   const char *dist = "";
   if (sep) { *sep = 0; dist = s_remain + (sep - t) + strlen(" · "); }
-  graphics_context_set_text_color(ctx, C_GREEN);
+  graphics_context_set_text_color(ctx, C_GREEN_T);
   GSize ts = graphics_text_layout_get_content_size(t, g_fonts.title, GRect(0, 0, b.size.w, h), GTextOverflowModeFill, GTextAlignmentLeft);
   ui_text(ctx, t, g_fonts.title, GRect(5, r.origin.y + (h - g_fonts.title_h) / 2 - 5, ts.w + 2, h), GTextAlignmentLeft);
   char right[48];

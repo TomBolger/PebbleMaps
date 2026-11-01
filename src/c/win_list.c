@@ -199,12 +199,12 @@ static bool mp_disabled(int row) { return row > 0 && !g_app.pois_on; }
 static void draw_switch(GContext *ctx, GPoint c, bool on, bool hl, bool dim) {
   GRect r = GRect(c.x - 12, c.y - 7, 24, 14);
   GColor blue = dim ? PBL_IF_COLOR_ELSE(GColorDarkGray, C_BLUE) : C_BLUE;
-  GColor track = on ? (hl ? GColorWhite : (dim ? PBL_IF_COLOR_ELSE(GColorLightGray, C_BLUE) : C_BLUE))
-                    : PBL_IF_COLOR_ELSE(GColorLightGray, GColorWhite);
+  GColor track = on ? (hl ? GColorWhite : (dim ? PBL_IF_COLOR_ELSE(C_DIVIDER, C_BLUE) : C_BLUE))
+                    : PBL_IF_COLOR_ELSE(C_DIVIDER, GColorWhite);
   ui_fill_rect(ctx, track, r, 7);
   graphics_context_set_stroke_color(ctx, hl ? GColorWhite : C_DIVIDER);
   graphics_draw_round_rect(ctx, r, 7);
-  ui_fill_circle(ctx, on ? (hl ? blue : GColorWhite) : (hl ? blue : PBL_IF_COLOR_ELSE(dim ? GColorDarkGray : GColorBlack, GColorBlack)), GPoint(on ? r.origin.x + 17 : r.origin.x + 7, c.y), 4);
+  ui_fill_circle(ctx, on ? (hl ? blue : GColorWhite) : (hl ? blue : PBL_IF_COLOR_ELSE(dim ? GColorDarkGray : C_TEXT, GColorBlack)), GPoint(on ? r.origin.x + 17 : r.origin.x + 7, c.y), 4);
 }
 
 static int16_t header_h(MenuLayer *m, uint16_t section, void *ctx) {
@@ -216,7 +216,7 @@ static int16_t header_h(MenuLayer *m, uint16_t section, void *ctx) {
 
 static void draw_header(GContext *ctx, const Layer *cell, uint16_t section, void *cb) {
   GRect b = layer_get_bounds(cell);
-  ui_fill_rect(ctx, PBL_IF_COLOR_ELSE(GColorLightGray, GColorWhite), b, 0);
+  ui_fill_rect(ctx, PBL_IF_COLOR_ELSE(C_DIVIDER, GColorWhite), b, 0);
   graphics_context_set_text_color(ctx, C_TEXT);
   ui_text(ctx, section == 0 ? "SAVED" : "RECENT", g_fonts.chip,
                      GRect(PBL_IF_ROUND_ELSE(0, 6), -2, b.size.w - PBL_IF_ROUND_ELSE(0, 6), 16), PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentLeft));
@@ -373,7 +373,7 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *i, void *cb) {
   bool dim = lw->kind == LW_MAPPLACES && mp_disabled(i->row);
   if (dim) {
     if (!hl) fg = sub_fg = GColorDarkGray;
-    icol = hl ? GColorWhite : GColorLightGray;
+    icol = hl ? GColorWhite : C_DIVIDER;
   }
 #else
   bool keep_color = false;
@@ -585,6 +585,7 @@ static void window_load(Window *window) {
     .select_long_click = select_long_cb,
     .selection_changed = selection_changed,
   });
+  menu_layer_set_normal_colors(lw->menu, C_BG, C_TEXT);
   menu_layer_set_highlight_colors(lw->menu, C_BLUE, GColorWhite);
   menu_layer_set_click_config_onto_window(lw->menu, window);
   layer_add_child(root, menu_layer_get_layer(lw->menu));

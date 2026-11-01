@@ -78,7 +78,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
     char line[96];
     if (s_type[0] && s_dist[0]) snprintf(line, sizeof(line), "%s · %s", s_type, s_dist);
     else snprintf(line, sizeof(line), "%s%s", s_type, s_dist);
-    graphics_context_set_text_color(ctx, PBL_IF_COLOR_ELSE(GColorCobaltBlue, GColorBlack));
+    graphics_context_set_text_color(ctx, C_ACCENT);
     ui_text(ctx, line, g_fonts.small_b, GRect(x, y - 2, tw, g_fonts.small_h + 4), al | TXT_ELLIPSIS);
     y += g_fonts.small_h;
   }
@@ -100,7 +100,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
                     .down = ICON_INFO, .up_color = s_fav ? C_STAR : C_STAR_EDGE, .down_color = C_BLUE };
   draw_action_strip(ctx, b, &ic);
   int cx = PBL_IF_ROUND_ELSE(b.size.w - STRIP_W / 2 - 4, b.size.w - STRIP_W / 2);
-  icon_draw(ctx, ICON_DIRECTIONS, GPoint(cx, b.size.h / 2), STRIP_W - 4, C_BLUE, GColorWhite);
+  icon_draw(ctx, ICON_DIRECTIONS, GPoint(cx, b.size.h / 2), STRIP_W - 4, C_BLUE, C_BG);
 }
 
 static void bar_cb(MapBarEvent ev, void *ctx) {

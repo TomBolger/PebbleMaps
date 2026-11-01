@@ -137,7 +137,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
                        GRect(card.origin.x + pad, card.origin.y + 2, card.size.w - pad * 2, card.size.h - 4), GTextAlignmentCenter | TXT_ELLIPSIS);
   }
   if (s_bar.open) mapbar_draw(&s_bar, ctx, b);
-  else if (s_count) draw_side_tab(ctx, b, false);   // always beside the middle button
+  else if (s_count) draw_side_tab(ctx, b, g_app.dark_map);   // always beside the middle button
 }
 
 // --- List mode -------------------------------------------------------------
@@ -183,6 +183,7 @@ static void list_load(Window *w) {
     .draw_row = menu_draw_row,
     .get_separator_height = ui_separator_h, .draw_separator = ui_draw_separator, .select_click = menu_select,
   });
+  menu_layer_set_normal_colors(s_menu, C_BG, C_TEXT);
   menu_layer_set_highlight_colors(s_menu, C_BLUE, GColorWhite);
   menu_layer_set_click_config_onto_window(s_menu, w);
   layer_add_child(root, menu_layer_get_layer(s_menu));

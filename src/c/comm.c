@@ -151,6 +151,7 @@ static void inbox_received(DictionaryIterator *it, void *ctx) {
         g_app.imperial = flags & 1;
         g_app.vibrate = (flags & 2) != 0;
         g_app.dark_map = PBL_IF_COLOR_ELSE((flags & 16) != 0, false);
+        theme_apply();
         touch_prefs_apply((flags >> 5) & 3);
         hide_prefs_apply((flags >> 7) & 63);
         int lvl = (flags >> 2) & 3;

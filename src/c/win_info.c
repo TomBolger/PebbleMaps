@@ -57,7 +57,7 @@ static void stars(GContext *ctx, int x, int y, int sz, int rating10) {
   for (int i = 0; i < 5; i++) {
     bool on = i < full;
     icon_draw(ctx, on ? ICON_STAR : ICON_STAR_OUTLINE, GPoint(x + i * (sz + 1) + sz / 2, y + sz / 2), sz,
-              on ? PBL_IF_COLOR_ELSE(GColorChromeYellow, GColorBlack) : PBL_IF_COLOR_ELSE(GColorLightGray, GColorBlack), C_BG);
+              on ? PBL_IF_COLOR_ELSE(GColorChromeYellow, GColorBlack) : PBL_IF_COLOR_ELSE(C_DIVIDER, GColorBlack), C_BG);
   }
 }
 
@@ -75,7 +75,7 @@ static int icon_row(GContext *ctx, IconId icon, const char *t, GFont f, int pad,
   return put(ctx, t, f, C_TEXT, pad, y, w - 2 * pad) + 4;
 #else
   int h = put(ctx, t, f, C_TEXT, pad + 20, y, w - pad - 22);
-  if (ctx) icon_draw(ctx, icon, GPoint(pad + 7, y + g_fonts.small_h / 2 + 1), 13, PBL_IF_COLOR_ELSE(GColorCobaltBlue, GColorBlack), C_BG);
+  if (ctx) icon_draw(ctx, icon, GPoint(pad + 7, y + g_fonts.small_h / 2 + 1), 13, C_ACCENT, C_BG);
   return h + 4;
 #endif
 }
@@ -90,7 +90,7 @@ static void draw_header(GContext *ctx, int w, int h) {
     graphics_context_set_compositing_mode(ctx, GCompOpAssign);
     graphics_draw_bitmap_in_rect(ctx, g_map.bmp, GRect((w - g_map.w) / 2, (h - g_map.h) / 2, g_map.w, g_map.h));
   } else {
-    ui_fill_rect(ctx, PBL_IF_COLOR_ELSE(GColorLightGray, GColorWhite), GRect(0, 0, w, h), 0);
+    ui_fill_rect(ctx, PBL_IF_COLOR_ELSE(C_DIVIDER, GColorWhite), GRect(0, 0, w, h), 0);
   }
   if (s_photos > 1) {
     char t[12];
@@ -141,7 +141,7 @@ static int layout(GContext *ctx, GRect b) {
   }
   y += put(ctx, s_meta, g_fonts.small, C_SUBTEXT, pad, y, tw);
   if (s_open[0]) {
-    y += 1 + put(ctx, s_open, g_fonts.small_b, (s_flags & 2) ? C_GREEN : PBL_IF_COLOR_ELSE(GColorDarkCandyAppleRed, GColorBlack),
+    y += 1 + put(ctx, s_open, g_fonts.small_b, (s_flags & 2) ? C_GREEN_T : C_RED_T,
                  pad, y + 1, tw);
   }
 

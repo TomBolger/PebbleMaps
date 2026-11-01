@@ -52,6 +52,7 @@ void ui_set_text_level(int level) {
 void ui_init(void) {
   int level = persist_exists(PERSIST_TEXT_LEVEL) ? persist_read_int(PERSIST_TEXT_LEVEL) : 3;
   ui_set_text_level(level);
+  theme_apply();
 }
 
 void ui_save_text_level(int level) {
@@ -318,7 +319,7 @@ void icon_draw(GContext *ctx, IconId id, GPoint c, int size, GColor fg, GColor b
     // a tiny name pill: dot + "A"
     GPoint a = P(1, 9), b = P(39, 31);
     GRect r = GRect(a.x, a.y, b.x - a.x, b.y - a.y);
-    ui_fill_rect(ctx, GColorWhite, r, r.size.h / 2);
+    ui_fill_rect(ctx, C_BG, r, r.size.h / 2);
     graphics_context_set_stroke_color(ctx, fg);
     graphics_context_set_stroke_width(ctx, 1);
     graphics_draw_round_rect(ctx, r, r.size.h / 2);
@@ -473,6 +474,21 @@ void maneuver_draw(GContext *ctx, int code, GPoint c, int size, GColor fg, GColo
 // ---------------------------------------------------------------------------
 // Map glyphs
 // ---------------------------------------------------------------------------
+#ifdef PBL_COLOR
+GColor g_th[12];
+void theme_apply(void) {
+  static const uint8_t L[12] = { GColorWhiteARGB8, GColorBlackARGB8, GColorBlackARGB8, GColorLightGrayARGB8, GColorCobaltBlueARGB8,
+                                GColorDarkGrayARGB8, GColorIslamicGreenARGB8, GColorDarkCandyAppleRedARGB8, GColorWindsorTanARGB8,
+                                GColorWhiteARGB8, GColorLightGrayARGB8, GColorDarkGrayARGB8 };
+  static const uint8_t D[12] = { GColorBlackARGB8, GColorWhiteARGB8, GColorLightGrayARGB8, GColorDarkGrayARGB8, GColorVividCeruleanARGB8,
+                                GColorLightGrayARGB8, GColorGreenARGB8, GColorMelonARGB8, GColorLightGrayARGB8,
+                                GColorDarkGrayARGB8, GColorOxfordBlueARGB8, GColorBlackARGB8 };
+  memcpy(g_th, g_app.dark_map ? D : L, 12);
+}
+#else
+void theme_apply(void) {}
+#endif
+
 void draw_pin(GContext *ctx, GPoint tip, int r, bool selected) {
   if (selected) r = r * 3 / 2;
   GPoint c = GPoint(tip.x, tip.y - r * 2);
@@ -559,14 +575,13 @@ GRect poi_label_rect(GPoint c, const char *name, bool left) {
 }
 
 void draw_poi_label(GContext *ctx, GPoint c, int cat, const char *name, GRect pill) {
-  bool dark = g_app.dark_map;
-  ui_fill_rect(ctx, dark ? GColorBlack : GColorWhite, pill, pill.size.h / 2);
-  graphics_context_set_stroke_color(ctx, dark ? PBL_IF_COLOR_ELSE(GColorDarkGray, GColorWhite) : C_DIVIDER);
+  ui_fill_rect(ctx, C_BG, pill, pill.size.h / 2);
+  graphics_context_set_stroke_color(ctx, C_DIVIDER);
   graphics_context_set_stroke_width(ctx, 1);
   graphics_draw_round_rect(ctx, pill, pill.size.h / 2);
   int r = g_fonts.level >= 1 ? 5 : 4;
   ui_fill_circle(ctx, poi_color(cat), c, r);
-  graphics_context_set_text_color(ctx, dark ? GColorWhite : GColorBlack);
+  graphics_context_set_text_color(ctx, C_TEXT);
   bool left = c.x > pill.origin.x + pill.size.w / 2;   // the name sits on the dot's left
   int tx = left ? pill.origin.x + 4 : c.x + r + 3;
   ui_text(ctx, name, g_fonts.chip, GRect(tx, pill.origin.y - 3, pill.size.w - 2 * r - 6, 16), GTextAlignmentLeft | TXT_ELLIPSIS);
@@ -578,7 +593,7 @@ void draw_compass(GContext *ctx, GPoint cc, int map_heading) {
 #ifdef PBL_COLOR
   graphics_context_set_antialiased(ctx, true);
 #endif
-  ui_fill_circle(ctx, GColorWhite, cc, 11);
+  ui_fill_circle(ctx, C_BG, cc, 11);
   graphics_context_set_stroke_color(ctx, C_DIVIDER);
   graphics_context_set_stroke_width(ctx, 1);
   graphics_draw_circle(ctx, cc, 11);
@@ -590,7 +605,7 @@ void draw_compass(GContext *ctx, GPoint cc, int map_heading) {
   GPath pn = { .num_points = 3, .points = n }, ps = { .num_points = 3, .points = so };
   graphics_context_set_fill_color(ctx, C_RED);
   gpath_draw_filled(ctx, &pn);
-  graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(GColorDarkGray, GColorBlack));
+  graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(GColorLightGray, GColorBlack));
   gpath_draw_filled(ctx, &ps);
 }
 
@@ -711,7 +726,7 @@ static void strip_dots(GContext *ctx, int cx, int y, int page, int pages) {
     if (i == page) {
       ui_fill_circle(ctx, C_BLUE, d, 2);
     } else {
-      graphics_context_set_stroke_color(ctx, PBL_IF_COLOR_ELSE(GColorDarkGray, GColorBlack));
+      graphics_context_set_stroke_color(ctx, C_HINT);
       graphics_context_set_stroke_width(ctx, 1);
       graphics_draw_circle(ctx, d, 2);
     }

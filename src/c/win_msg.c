@@ -21,9 +21,9 @@ static void icon_update(Layer *layer, GContext *ctx) {
   MsgWin *mw = *(MsgWin **)layer_get_data(layer);
   GRect b = layer_get_bounds(layer);
   GColor c = mw->icon == ICON_WARNING ? C_RED : C_BLUE;
-  graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(GColorCeleste, GColorWhite));
+  graphics_context_set_fill_color(ctx, C_BG);
   if (mw->icon == ICON_WARNING) ui_fill_circle(ctx, PBL_IF_COLOR_ELSE(GColorMelon, GColorWhite), GPoint(b.size.w / 2, b.size.h / 2), b.size.h / 2);
-  icon_draw(ctx, mw->icon, GPoint(b.size.w / 2, b.size.h / 2), b.size.h * 6 / 10, c, PBL_IF_COLOR_ELSE(GColorCeleste, GColorWhite));
+  icon_draw(ctx, mw->icon, GPoint(b.size.w / 2, b.size.h / 2), b.size.h * 6 / 10, c, C_BG);
 }
 
 static void layout(MsgWin *mw);
@@ -85,11 +85,15 @@ static void window_load(Window *window) {
   layer_set_update_proc(mw->icon_layer, icon_update);
   scroll_layer_add_child(mw->scroll, mw->icon_layer);
   mw->title = text_layer_create(GRect(0, 0, b.size.w, 60));
+  text_layer_set_background_color(mw->title, GColorClear);
+  text_layer_set_text_color(mw->title, C_TEXT);
   text_layer_set_font(mw->title, g_fonts.title);
   text_layer_set_text_alignment(mw->title, GTextAlignmentCenter);
   text_layer_set_text(mw->title, mw->title_text);
   scroll_layer_add_child(mw->scroll, text_layer_get_layer(mw->title));
   mw->body = text_layer_create(GRect(0, 0, b.size.w, 2000));
+  text_layer_set_background_color(mw->body, GColorClear);
+  text_layer_set_text_color(mw->body, C_TEXT);
   text_layer_set_font(mw->body, mw->info ? g_fonts.small : g_fonts.body);
   text_layer_set_text_alignment(mw->body, mw->info ? PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentLeft) : GTextAlignmentCenter);
   text_layer_set_text(mw->body, mw->body_text);
