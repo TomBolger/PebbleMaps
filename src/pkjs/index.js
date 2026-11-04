@@ -1102,7 +1102,8 @@ function withDest(cb) {
         if (target.favIndex !== undefined) settings.updateFavoriteLocation(target.favIndex, list[0]);
         return finish(null);
       }
-      finish(err || e2 || { code: P.ERR.NO_RESULTS, title: 'Address not found', text: 'Google couldn\'t find "' + fmt.clip(target.address || target.name, 60) + '". Check the address in Settings.' });
+      var where = target.favIndex !== undefined ? ' Check the address in Settings.' : '';
+      finish(err || e2 || { code: P.ERR.NO_RESULTS, title: 'Address not found', text: 'Google couldn\'t find "' + fmt.clip(target.address || target.name, 60) + '".' + where });
     });
   });
 }
@@ -1137,26 +1138,45 @@ function onSelect(p) {
   var src = p.mode, idx = p.idx;
   var d = null;
   if (src === P.SRC.RESULTS) d = results[idx];
-  else if (src === P.SRC.FAVS) {
-    var f = settings.favorites()[idx];
-    if (f) {
-      d = JSON.parse(JSON.stringify(f));
-      d.favIndex = idx;
-      if (f.geocodedFrom !== undefined && f.geocodedFrom !== f.address) { d.lat = undefined; d.lng = undefined; }
-      if (f.lat === undefined || f.lat === null || f.lat === '') { d.lat = undefined; d.lng = undefined; }
-    }
-  } else if (src === P.SRC.RECENTS) d = settings.recents()[idx];
+  else if (src === P.SRC.FAVS) d = favDest(idx);
+  else if (src === P.SRC.RECENTS) d = settings.recents()[idx];
   else if (src === P.SRC.POI && pois[idx]) d = JSON.parse(JSON.stringify(pois[idx]));
   else if (src === P.SRC.SUGGEST) {
     var set = suggestionSets.filter(function (s) { return s.id === p.num; })[0];
     if (!set && p.num === undefined) set = suggestionSets[0];   // older watch builds
     var sg = set && set.list[idx];
     if (sg) d = { name: sg.name, address: sg.address, placeId: sg.placeId, fromSuggest: true, suggestToken: set.token };
-  }
+  } else if (src === P.SRC.API && p.text) d = apiDest(p.text);
   if (!d) return sendError({ code: P.ERR.API, text: 'That place is no longer available.' });
   dest = d;
   route = null;
+  if (src === P.SRC.API) return;   // navigation starts right after; it reports any problem finding the place
   sendPlace();
+}
+
+function favDest(idx) {
+  var f = settings.favorites()[idx];
+  if (!f) return null;
+  var d = JSON.parse(JSON.stringify(f));
+  d.favIndex = idx;
+  if (f.geocodedFrom !== undefined && f.geocodedFrom !== f.address) { d.lat = undefined; d.lng = undefined; }
+  if (f.lat === undefined || f.lat === null || f.lat === '') { d.lat = undefined; d.lng = undefined; }
+  return d;
+}
+
+// A destination from another app (CMD_API_NAVIGATE): a favorite's name, "lat,lng", or an address/place name
+function apiDest(text) {
+  var key = text.trim().replace(/\s+/g, ' ').toLowerCase();
+  var favs = settings.favorites();
+  for (var i = 0; i < favs.length; i++) {
+    if (favs[i].name && favs[i].name.trim().replace(/\s+/g, ' ').toLowerCase() === key) return favDest(i);
+  }
+  var m = /^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/.exec(text);
+  if (m) {
+    var lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+    if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { name: text.trim(), lat: lat, lng: lng };
+  }
+  return { name: text, address: text };
 }
 
 function onPlaceMap(p) {
@@ -1524,7 +1544,7 @@ function startSimulation() {
 
 function onNavStart(p) {
   stopNav();
-  var mode = p.mode >= 0 && p.mode <= 3 ? p.mode : S.defaultMode;
+  var mode = p.mode >= 0 && p.mode <= 3 ? p.mode : destMode(dest);
   navState = { seq: p.seq, w: clampSize(p.width, p.height)[0], h: clampSize(p.width, p.height)[1],
     zoomDelta: 0, pan: null, panHeading: 0, overview: false, shown: null, streaming: false, pending: false,
     headingUp: p.num !== 0, voice: voiceOn };

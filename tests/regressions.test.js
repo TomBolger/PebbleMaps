@@ -25,6 +25,7 @@ function phone() {
   const clock = timers(), messages = [], routes = [], autocomplete = [], details = [], fixes = [], watches = [], stopped = [], pois = [];
   const dev = { simLocation: [0, 0] };
   const S = { apiKey: 'dummy', defaultMode: 0, allModeTimes: true, liveLocation: false };
+  const favs = [];
   function Clay() { this.registerComponent = () => {}; }
   const google = {
     hasKey: () => true,
@@ -35,7 +36,8 @@ function phone() {
     searchOpen: (loc, radius, cat, cb) => cb(null, [])
   };
   const mocks = {
-    './image': {}, './google': google, './settings': { get: () => S, findFavorite: () => -1, favorites: () => [] },
+    './image': {}, './google': google, './settings': { get: () => S, findFavorite: () => -1, favorites: () => favs,
+      favMode: (f, st) => (f.mode >= 0 && f.mode <= 3 ? f.mode : st.defaultMode) },
     './vendor/clay': Clay, './clay-components': [], './clay-config': { config: () => [] }, './dev': dev,
     'jpeg-js/lib/decoder': () => {}, './msg': { send: d => messages.push(d), drop() {}, pending: () => 0 },
     './tiles': { get() {}, styleKey: () => '', setIdleCheck() {}, cancelPrefetch() {} }, './voice': { onProblem() {}, cancel() {} }
@@ -53,7 +55,7 @@ function phone() {
   };
   vm.runInNewContext(fs.readFileSync(root + '/index.js', 'utf8'), context);
   context.dest = { lat: 0, lng: 0.01, name: 'Destination' };
-  return { context, pois, clock, messages, routes, autocomplete, details, fixes, watches, stopped, dev, S,
+  return { context, google, pois, clock, messages, routes, autocomplete, details, fixes, watches, stopped, dev, S, favs,
     send: p => context.module.exports._test.onMessage({ payload: p }) };
 }
 
@@ -260,4 +262,63 @@ test('overview: resent only when the view leaves its middle, changes zoom or tur
   assert.notEqual(ov.next(sent, 15, c, 90, 100, 114), null);
   assert.equal(ov.next(null, 15, c, 0, 0, 0), null);
   assert.equal(ov.next(null, 1, c, 0, 100, 114), null);
+});
+
+test('API navigate: "lat,lng" becomes the destination without a place card, and navigation routes there', () => {
+  const p = phone();
+  p.send({ cmd: P.CMD.SELECT, mode: P.SRC.API, text: ' 47.6205, -122.3493 ' });
+  assert.equal(p.context.dest.lat, 47.6205); assert.equal(p.context.dest.lng, -122.3493);
+  assert.equal(p.messages.filter(m => m.cmd === P.CMD.PLACE || m.cmd === P.CMD.ERROR).length, 0);
+  start(p);
+  p.fixes.forEach(f => f.ok({ coords: { latitude: 47.6, longitude: -122.3, accuracy: 10 }, timestamp: Date.now() }));
+  assert.equal(p.routes.length, 1);
+});
+
+test('API navigate: an address is looked up like a typed favorite', () => {
+  const p = phone();
+  p.send({ cmd: P.CMD.SELECT, mode: P.SRC.API, text: '400 Broad St, Seattle' });
+  assert.deepEqual({ ...p.context.dest }, { name: '400 Broad St, Seattle', address: '400 Broad St, Seattle' });
+  p.send({ cmd: P.CMD.SELECT, mode: P.SRC.API, text: '91, 10' });   // not a coordinate
+  assert.equal(p.context.dest.address, '91, 10');
+});
+
+test('API navigate: a favorite\'s name goes to that favorite, in its travel mode unless the caller gives one', () => {
+  const p = phone();
+  p.favs.push({ name: 'Work', address: '1 Main St', lat: 1, lng: 2, mode: 'default' },
+              { name: ' Home ', address: '9 Elm St', lat: 3, lng: 4, mode: 1 });
+  const go = (text, mode) => {
+    p.routes.length = 0;
+    p.send({ cmd: P.CMD.SELECT, mode: P.SRC.API, text });
+    start(p, mode);
+    p.fixes.forEach(f => f.ok({ coords: { latitude: 0, longitude: 0, accuracy: 10 }, timestamp: Date.now() }));
+    p.fixes.length = 0;
+    return p.routes[0] && p.routes[0].mode;
+  };
+  assert.equal(go('home', P.MODE_USE_DEFAULT), 1);   // the favorite's own mode
+  assert.equal(p.context.dest.favIndex, 1); assert.equal(p.context.dest.lat, 3);
+  assert.equal(go('  HOME', 2), 2);                  // the caller's mode wins
+  assert.equal(p.context.dest.favIndex, 1);
+  assert.equal(go('work', P.MODE_USE_DEFAULT), 0);   // favorite set to the app default
+  assert.equal(p.context.dest.address, '1 Main St');
+  p.google.geocode = () => {};
+  go('Home Depot', P.MODE_USE_DEFAULT);              // whole names only
+  assert.equal(p.context.dest.favIndex, undefined); assert.equal(p.context.dest.address, 'Home Depot');
+});
+
+test('API navigate without a destination reports an error', () => {
+  const p = phone();
+  p.send({ cmd: P.CMD.SELECT, mode: P.SRC.API });
+  assert.equal(p.messages.filter(m => m.cmd === P.CMD.ERROR).length, 1);
+});
+
+test('API navigate to an address Google can\'t find ends navigation with an error', () => {
+  const p = phone();
+  p.google.geocode = (q, cb) => cb(null, null);
+  p.google.searchText = (q, me, cb) => cb(null, []);
+  p.send({ cmd: P.CMD.SELECT, mode: P.SRC.API, text: 'zzzz nowhere' });
+  start(p);
+  assert.equal(p.context.navState, null);
+  const errors = p.messages.filter(m => m.cmd === P.CMD.ERROR);
+  assert.equal(errors.length, 1);
+  assert.equal(errors[0].text, 'Google couldn\'t find "zzzz nowhere".');   // not a favorite, so no "Settings"
 });

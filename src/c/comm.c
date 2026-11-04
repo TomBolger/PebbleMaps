@@ -166,6 +166,23 @@ static void inbox_received(DictionaryIterator *it, void *ctx) {
     case CMD_VOICE:
       voice_handle(it);
       return;
+    case CMD_API_SEARCH:
+      pop_to_home();
+      voice_set_enabled(false);   // a search ends navigation, as pressing Stop does
+      comm_cmd(CMD_NAV_STOP);
+      results_window_push_search(tuple_str(it, MESSAGE_KEY_text));
+      return;
+    case CMD_API_NAVIGATE: {
+      // the destination goes to the phone like a picked place, then directions start
+      pop_to_home();   // nothing left underneath (keyboard, place info, messages)
+      OutMsg m;
+      comm_msg_init(&m, CMD_SELECT);
+      m.mode = SRC_API;
+      strncpy(m.text, tuple_str(it, MESSAGE_KEY_text), sizeof(m.text) - 1);
+      comm_send(&m);
+      nav_window_push(tuple_int(it, MESSAGE_KEY_mode, MODE_USE_DEFAULT));
+      return;
+    }
     default:
       break;
   }

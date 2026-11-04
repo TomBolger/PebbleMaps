@@ -51,6 +51,10 @@ enum {
   CMD_VOICE = 111,
   CMD_INFO_DATA = 112,
   CMD_VOICE_DONE = 30,
+  // phone -> watch, from other apps on the phone. Search: text is the query. Navigate: text is a
+  // favorite's name, an address, a place name or "lat,lng"; mode is optional.
+  CMD_API_SEARCH = 120,
+  CMD_API_NAVIGATE = 121,
 };
 
 // Pebble Time and Time Round: 64 KB for code and a full-color map picture, so a few
@@ -76,7 +80,7 @@ enum { MODE_DRIVE = 0, MODE_WALK = 1, MODE_BIKE = 2, MODE_TRANSIT = 3, MODE_COUN
 enum { LIST_RESULTS = 0, LIST_FAVS = 1, LIST_STEPS = 2, LIST_MODES = 3, LIST_RECENTS = 4, LIST_SUGGEST = 5 };
 
 // Destination sources for CMD_SELECT
-enum { SRC_RESULTS = 0, SRC_FAVS = 1, SRC_RECENTS = 2, SRC_SUGGEST = 3, SRC_POI = 4, SRC_DEST = 5 };
+enum { SRC_RESULTS = 0, SRC_FAVS = 1, SRC_RECENTS = 2, SRC_SUGGEST = 3, SRC_POI = 4, SRC_DEST = 5, SRC_API = 6 };
 
 // Error codes
 enum { ERR_NO_KEY = 1, ERR_NO_LOCATION = 2, ERR_API = 3, ERR_NETWORK = 4, ERR_NO_RESULTS = 5 };
