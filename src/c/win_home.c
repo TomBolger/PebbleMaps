@@ -82,10 +82,11 @@ static void send_hello(void) {
   m.width = b.size.w;
   m.height = b.size.h;
   m.num = PBL_IF_COLOR_ELSE(FMT_4BIT, FMT_1BIT);
-  m.mode = (g_app.has_mic ? 1 : 0) | (PBL_IF_ROUND_ELSE(1, 0) << 1) | (g_app.touch ? 4 : 0) | (PM_LOWMEM ? 8 : 0);
+  m.mode = (g_app.has_mic ? 1 : 0) | (PBL_IF_ROUND_ELSE(1, 0) << 1) | (g_app.touch ? 4 : 0) | (PM_LOWMEM ? 8 : 0) |
+           (map_arena_end() ? 16 : 0);   // 16: has tile mode
   m.idx = g_app.inbox_size;
   GSize bs = map_buffer_size();
-  snprintf(m.text, sizeof(m.text), "%d,%d", bs.w, bs.h);
+  snprintf(m.text, sizeof(m.text), "%d,%d,%d,%d", bs.w, bs.h, map_arena_end(), TILE_SLOTS);
   comm_send(&m);
   s_hello_sent = true;
 }

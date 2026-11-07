@@ -12,10 +12,12 @@ static Layer *s_canvas;
 static Layer *s_dots;
 static int s_src, s_idx;
 static int s_suggest_request;
-static char s_name[64];
-static char s_type[48];
-static char s_addr[96];
-static char s_dist[32];
+// The texts live on the heap while the window does (the watch's RAM is tight)
+static struct { char name[64], type[48], addr[96], dist[32]; } *s_tx;
+#define s_name (s_tx->name)
+#define s_type (s_tx->type)
+#define s_addr (s_tx->addr)
+#define s_dist (s_tx->dist)
 static bool s_fav;
 static bool s_loaded;
 static int s_mode = MODE_DRIVE;
@@ -203,6 +205,8 @@ static void window_disappear(Window *window) {
 static void window_unload(Window *window) {
   dots_layer_destroy(s_dots);
   layer_destroy(s_canvas);
+  free(s_tx);
+  s_tx = NULL;
   window_destroy(s_window);
   s_window = NULL;
 }
@@ -218,14 +222,20 @@ static void place_push(int src, int idx, const char *title, int request_id) {
   s_suggest_request = request_id;
   s_loaded = false;
   s_fav = false;
+  s_tx = calloc(1, sizeof(*s_tx));
+  if (!s_tx) return;
   strncpy(s_name, title ? title : "", sizeof(s_name) - 1);
-  s_type[0] = s_addr[0] = s_dist[0] = 0;
   // short on memory (Pebble Time, Time Round): drop the screens underneath first
   if (heap_bytes_free() < 3000) {
     list_windows_close_all();
     results_window_close();
   }
   s_window = window_create();
+  if (!s_window) {
+    free(s_tx);
+    s_tx = NULL;
+    return;
+  }
   window_set_background_color(s_window, C_BG);
   window_set_click_config_provider(s_window, click_config);
   window_set_window_handlers(s_window, (WindowHandlers){

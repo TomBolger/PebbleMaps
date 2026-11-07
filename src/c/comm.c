@@ -161,6 +161,7 @@ static void inbox_received(DictionaryIterator *it, void *ctx) {
     case CMD_MAP_BEGIN:
     case CMD_MAP_CHUNK:
     case CMD_MARKERS:
+    case CMD_TILES:
       map_handle(cmd, it);
       return;
     case CMD_VOICE:

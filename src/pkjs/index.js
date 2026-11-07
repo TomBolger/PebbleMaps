@@ -16,6 +16,7 @@ var clayConfig = require('./clay-config');
 var clayComponents = require('./clay-components');
 var dev = require('./dev');
 var tiles = require('./tiles');
+var tilemap = require('./tilemap');
 tiles.setIdleCheck(function () { return msg.pending() === 0; });
 var voice = require('./voice');
 var jpeg = require('jpeg-js/lib/decoder');
@@ -28,7 +29,7 @@ clayComponents.forEach(function (c) { clay.registerComponent(c); });
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
-var watch = { w: 144, h: 168, fmt: 1, mic: true, round: false, touch: false, inbox: 4096 };
+var watch = { w: 144, h: 168, fmt: 1, mic: true, round: false, touch: false, inbox: 4096, tile: false, tileStart: 0, tileEnd: 0, tileSlots: 0 };
 var me = null;            // [lat, lng]
 var meAcc = 50;
 var meTime = 0;
@@ -70,6 +71,15 @@ function reloadSettings() {
   google.setKey(key);
   google.setLanguage(S.language);
 }
+
+tilemap.init({
+  watch: function () { return watch; },
+  style: function () { return mapStyle(); },
+  economical: function () { return !!S.economical; },
+  seq: function () { return currentMapSeq; },
+  fail: function (err) { tileFail(err); },
+  worked: function () { mapWorked(); }
+});
 
 // ---------------------------------------------------------------------------
 // Sending helpers
@@ -297,13 +307,15 @@ function poiMarkers(v) {
 }
 
 // The markers message: positions, plus place names (in marker order) when shown
-function markersDict(seq, list) {
+// tv: tile mode only: the view centre (world pixels) the positions are counted from
+function markersDict(seq, list, tv) {
   list = list.filter(Boolean).slice(0, 24);
   var mk = encodeMarkers(list);
   var names = list.filter(function (m) { return m.kind >= P.MK.POI; }).map(function (m) { return m.name || ''; });
   var d = { cmd: CMD.MARKERS, seq: seq };
   if (mk.length) d.data = mk;
   if (names.some(Boolean)) d.list = names.join('\x1e');
+  if (tv) { d.idx = tv.cx; d.mode = tv.cy; }
   return d;
 }
 
@@ -313,8 +325,9 @@ function homeMarkers(v) {
 
 // Send just the markers for what the watch shows (your dot moving, places arriving)
 function sendMarkers(st, force) {
-  var d = markersDict(st.seq, st.markers(st.view));
-  var key = (d.data || []).join(',') + (d.list || '');
+  var tv = st === views.home && tilemap.active() ? tilemap.viewOf(st.view) : null;
+  var d = markersDict(st.seq, st.markers(st.view), tv);
+  var key = (d.data || []).join(',') + (d.list || '') + (tv ? '@' + tv.cx + ',' + tv.cy : '');
   if (!force && key === lastMk) return;
   lastMk = key;
   msg.drop('mk');
@@ -471,6 +484,7 @@ function screenFirstRects(w, h, sw, sh, rowsPer) {
 // onBegin runs right after the start message is queued; onDone when every piece is delivered (or failed).
 function pushImage(seq, img, plan, info, markers, opts) {
   opts = opts || {};
+  tilemap.stop();   // the watch's memory holds a picture from now on
   var prev = wimg;
   var ref = prev && plan.ref && prev.id === plan.ref ? plan.ref : 0;
   var rects = null, whole = false;
@@ -527,7 +541,44 @@ function pushImage(seq, img, plan, info, markers, opts) {
 
 // view: {center, zoom, w, h (screen area), path?, gmarkers?}
 // markers: array of {x,y,kind,index} or null. done(err) once the picture starts streaming.
+// The home map on Pebble Time 2 / Round 2 when it isn't turned: tiles instead of one picture
+function tileEligible(seq, view) {
+  var st = views.home;
+  // any home map that isn't turned (north up, or heading-up while standing still)
+  return watch.tile && !view.heading && lastKind === 'home' && !!st && st.seq === seq && st.view === view && !navState;
+}
+
+function tileFail(err) {
+  console.log('map error ' + JSON.stringify(err));
+  if (retryCount === 0) {
+    if (err.code === P.ERR.NETWORK) toast('No connection. Retrying...');
+    else if (err.code === P.ERR.NO_KEY || err.title) sendError(err);
+  }
+  retryLater(err);
+}
+
+function streamTiles(seq, view, done) {
+  var st = views.home, style = mapStyle();
+  currentMapSeq = seq;
+  ++renderToken;
+  wimg = null;
+  var v = tilemap.viewOf(view);
+  view.center = geo.unproject(v.cx, v.cy, v.z);   // whole world pixels, as the watch counts them
+  live.lastRender = Date.now();
+  refreshFn = function () { if (currentMapSeq === seq && !navState) tilemap.kick(); };
+  if (tilemap.runningFor(seq, style, v)) {
+    tilemap.adopt(v);
+    sendMarkers(st, true);
+  } else {
+    tilemap.begin(seq, v);
+    sendMarkers(st, true);
+  }
+  tilemap.kick();
+  if (done) done(null);
+}
+
 function streamMap(seq, view, markers, done, quiet) {
+  if (tileEligible(seq, view)) return streamTiles(seq, view, done);
   currentMapSeq = seq;
   var token = ++renderToken;
   var os = outSize(view.w, view.h);
@@ -610,9 +661,38 @@ function showView(seq, kind, base, markersFn, restore) {
   streamMap(seq, st.view, markersFn(st.view));
 }
 
+// Tile mode: the watch moved or zoomed the map by itself and says where it is now (world pixels at zoom p.num)
+function onTileView(p) {
+  var st = views.home, old = st.view, z = p.num, v = cloneView(old);
+  st.seq = p.seq;
+  setMapVisible(true);
+  var oc = geo.project(old.center[0], old.center[1], old.zoom), f = Math.pow(2, z - old.zoom);
+  if (Math.abs(p.width - oc[0] * f) > 1.5 || Math.abs(p.height - oc[1] * f) > 1.5) {
+    st.follow = false;   // you moved it: it stays there until you move again
+    st.lastPan = Date.now();
+  }
+  v.zoom = z;
+  v.center = geo.unproject(p.width, p.height, z);
+  st.view = v;
+  var tv = tilemap.viewOf(v);
+  if (tilemap.runningFor(p.seq, mapStyle(), tv)) {
+    currentMapSeq = p.seq;
+    tilemap.move(tv);
+    sendMarkers(st);
+    tilemap.kick();
+  } else {
+    streamMap(p.seq, v, st.markers(v));
+  }
+  maybeFetchPois(v);
+}
+
 function onAdjust(p) {
   mirrorAdjust(p);
   if (navigator_ && navState) return navAdjust(p);
+  if (p.idx === P.ADJ.VIEW) {
+    if (lastKind === 'home' && views.home && watch.tile) onTileView(p);
+    return;
+  }
   var st = views[lastKind];
   if (!st) return;
   var v = cloneView(st.view);
@@ -1827,6 +1907,7 @@ function onMessage(e) {
     msg.drop('map:');
     msg.drop('mk');
     tiles.cancelPrefetch();
+    if (cmd !== CMD.HOME_MAP) tilemap.stop();
   }
   try {
     switch (cmd) {
@@ -1840,9 +1921,18 @@ function onMessage(e) {
         watch.lowmem = !!(p.mode & 8);
         watch.inbox = p.idx > 0 ? p.idx : 4096;
         voice.setInbox(watch.inbox);
-        if (p.text && /^\d+,\d+$/.test(p.text)) {
-          buf.w = parseInt(p.text.split(',')[0], 10);
-          buf.h = parseInt(p.text.split(',')[1], 10);
+        tilemap.stop();
+        watch.tile = false;
+        if (p.text && /^\d+,\d+(,\d+,\d+)?$/.test(p.text)) {
+          var dims = p.text.split(',').map(function (n) { return parseInt(n, 10); });
+          buf.w = dims[0];
+          buf.h = dims[1];
+          if (dims.length > 2 && (p.mode & 16) && !dev.noTiles) {   // the watch can keep its map as tiles
+            watch.tileEnd = dims[2];
+            watch.tileSlots = dims[3];
+            watch.tileStart = dims[3] * 16;
+            watch.tile = true;
+          }
         } else {
           buf.w = watch.w;
           buf.h = watch.h;
@@ -1850,7 +1940,7 @@ function onMessage(e) {
         sendStatus();
         break;
       case CMD.HOME_MAP: wimg = null; onHomeMap(p); break;
-      case CMD.CANCEL: setMapVisible(false); break;
+      case CMD.CANCEL: setMapVisible(false); tilemap.stop(); break;
       case CMD.INFO: onInfo(p); break;
       case CMD.PHOTO: onPhoto(p); break;
       case CMD.POI_MODE: {
@@ -1967,6 +2057,7 @@ Pebble.addEventListener('webviewclosed', function (e) {
   }
   reloadSettings();
   tiles.clear();
+  tilemap.stop();
   route = null;
   sendStatus();
   updateTracking();

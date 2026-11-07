@@ -24,7 +24,8 @@ def configure(ctx):
     # Size tuning: the app must fit in 64 KB (.text+.data+.bss). These keep the
     # compiler from growing code for speed. (No LTO: the firmware rejects it.)
     size_flags = ['-fno-inline-functions-called-once', '-fno-reorder-blocks',
-                  '-fno-partial-inlining', '-fno-tree-loop-optimize']
+                  '-fno-partial-inlining', '-fno-tree-loop-optimize',
+                  '-fno-if-conversion', '-fno-schedule-insns2', '-fno-tree-dominator-opts', '-fno-caller-saves', '-fno-ira-hoist-pressure']
     for p in ctx.all_envs:
         ctx.all_envs[p].append_value('CFLAGS', size_flags)
 

@@ -40,6 +40,15 @@ static uint32_t buf_bytes(int w, int h) {
 
 GSize map_buffer_size(void) { return s_buf_size; }
 
+#if TOUCH_HW
+static bool s_tile;          // tile mode: the buffer holds tiles, not a picture
+#define IS_TILE s_tile
+int map_arena_end(void) { return s_buf ? s_bpr * s_buf_size.h : 0; }
+#else
+#define IS_TILE 0
+int map_arena_end(void) { return 0; }
+#endif
+
 void map_reserve(void) {
   if (s_buf) return;
   // Screen size plus a margin all round when memory allows, so panning
@@ -67,6 +76,9 @@ void map_reserve(void) {
 }
 
 void map_release(void) {
+#if TOUCH_HW
+  s_tile = false;
+#endif
   g_map.bmp = NULL;
   g_map.complete = false;
   g_map.ref_valid = false;
@@ -309,6 +321,17 @@ static void notify_xform(const MapXform *x) {
   if (s_listener) s_listener(x);
 }
 
+// Markers follow a zoom about the middle of the frame
+static void scale_markers(int k) {
+  int fcx = g_map.fw / 2, fcy = g_map.fh / 2;
+  for (int i = 0; i < g_map.n_markers; i++) {
+    Marker *mk = &g_map.markers[i];
+    int dx = mk->x - fcx, dy = mk->y - fcy;
+    mk->x = fcx + (k > 0 ? dx << k : dx / (1 << -k));
+    mk->y = fcy + (k > 0 ? dy << k : dy / (1 << -k));
+  }
+}
+
 // Zoom the picture we have right away (blocky until the sharp one arrives)
 static void prescale(int k) {
   if (!g_map.bmp || !g_map.ref_valid) return;
@@ -323,17 +346,155 @@ static void prescale(int k) {
     s_pans[i].dy = k > 0 ? s_pans[i].dy << k : s_pans[i].dy / (1 << -k);
   }
   recompute_shift();
-  int fcx = g_map.fw / 2, fcy = g_map.fh / 2;
-  for (int i = 0; i < g_map.n_markers; i++) {
-    Marker *mk = &g_map.markers[i];
-    int dx = mk->x - fcx, dy = mk->y - fcy;
-    mk->x = fcx + (k > 0 ? dx << k : dx / (1 << -k));
-    mk->y = fcy + (k > 0 ? dy << k : dy / (1 << -k));
-  }
+  scale_markers(k);
   notify_xform(&x);
 }
 
+#if TOUCH_HW
+// --- Tile mode ------------------------------------------------------------------------
+// The view is a centre in world pixels at one zoom. Tiles are what the phone has put in the buffer: a table
+// of {where in the world, zoom, where in the buffer, how long} and PackBits rows (64 pixels = 32 bytes per row,
+// each packed on its own). Drawing decodes the tiles that touch the frame straight into the frame buffer; tiles
+// of another zoom stand in (scaled) until the right ones arrive. The phone's records are this struct as it is.
+typedef struct { int32_t x, y; uint16_t off, len; uint8_t z, slot; } TileEnt;   // x, y: world pixels of the corner, at zoom z
+static int32_t s_cx, s_cy;   // view centre
+static uint8_t s_tz;         // view zoom
+#define tiles() ((TileEnt *)gbitmap_get_data(s_buf))
+
+static void tile_begin(DictionaryIterator *it) {
+  bool fresh = !s_tile || (tuple_int(it, MESSAGE_KEY_flags, 0) & 1);
+  if (!fresh && (s_drag_x || s_drag_y)) return;   // you're moving the map right now: it stays under your finger
+  int32_t cx = tuple_int(it, MESSAGE_KEY_idx, 0), cy = tuple_int(it, MESSAGE_KEY_mode, 0);
+  if (fresh) {
+    memset(tiles(), 0, TILE_START);
+    s_tile = true;
+    g_map.bmp = s_buf;
+    g_map.complete = g_map.ref_valid = false;
+    g_map.rheading = g_map.n_markers = g_map.shift_x = g_map.shift_y = 0;
+    g_map.chunk_img = 0;
+    s_cx = cx;
+    s_cy = cy;
+  }
+  g_map.shift_x += s_cx - cx;   // the markers stay where they are in the world
+  g_map.shift_y += s_cy - cy;
+  s_cx = cx;
+  s_cy = cy;
+  s_tz = tuple_int(it, MESSAGE_KEY_num, 15);
+}
+
+// You moved or zoomed the map: it happens now (the phone is told where the view is)
+static void tile_move(int action, int dx, int dy) {
+  if (action != ADJ_PAN) {
+    int k = action == ADJ_ZOOM_IN ? 1 : -1, z = s_tz + k;
+    if (z < 2 || z > 20) return;
+    s_tz = z;
+#define ZM(v) v = k > 0 ? v << 1 : v >> 1
+    ZM(s_cx);
+    ZM(s_cy);
+    ZM(g_map.shift_x);
+    ZM(g_map.shift_y);
+    scale_markers(k);
+    dx = dy = 0;
+  }
+  int32_t cx = clampi(s_cx + dx, 0, (256 << s_tz) - 1), cy = clampi(s_cy + dy, 0, (256 << s_tz) - 1);
+  g_map.shift_x += s_cx - cx;   // (the markers' origin stays put in the world)
+  g_map.shift_y += s_cy - cy;
+  s_cx = cx;
+  s_cy = cy;
+}
+
+// One row of 64 pixels as colours, from its tokens (see tilestore.js): runs, "same as above" (prev), literal pixels
+static const uint8_t *tile_row(const uint8_t *p, const uint8_t *e, uint8_t *cur, const uint8_t *prev) {
+  int n = 0;
+  while (n < TILE_SIZE && p < e) {
+    int c = *p++, cnt = (c & 0x3F) + 1, b = 0;
+    if (c & 0x80) {
+      cnt = ((c >> 4) & 7) + 2;
+      if (cnt == 9) cnt += *p++;
+    }
+    for (int k = 0; k < cnt && n < TILE_SIZE; k++, n++) {
+      if (c < 0x40 && !(k & 1)) b = *p++;
+      cur[n] = (c & 0x80) ? s_palette[c & 15].argb : ((c & 0x40) ? prev[n] : s_palette[(k & 1) ? b & 15 : b >> 4].argb);
+    }
+  }
+  return p;
+}
+
+// Put one table entry on screen (k: view zoom - its zoom; pass 1 = this zoom, 0 = scaled stand-ins). fb == NULL
+// only measures. Returns the pixels it covers inside the frame fr.
+static int tile_put(GBitmap *fb, const TileEnt *e, int32_t wx, int32_t wy, const GRect *fr, int pass) {
+  int k = s_tz - e->z, ts = k >= 0 ? TILE_SIZE << k : TILE_SIZE >> -k;
+  if (!e->len || k < -3 || k > 3 || (k == 0) != pass) return 0;
+  int px = fr->origin.x + (k >= 0 ? e->x << k : e->x >> -k) - wx;   // the tile's corner on screen
+  int py = fr->origin.y + (k >= 0 ? e->y << k : e->y >> -k) - wy;
+  int x0 = clampi(px, fr->origin.x, fr->origin.x + fr->size.w), x1 = clampi(px + ts, fr->origin.x, fr->origin.x + fr->size.w);
+  int y0 = clampi(py, fr->origin.y, fr->origin.y + fr->size.h), y1 = clampi(py + ts, fr->origin.y, fr->origin.y + fr->size.h);
+  if (x0 >= x1 || y0 >= y1) return 0;
+  if (fb) {
+    const uint8_t *p = (const uint8_t *)tiles() + e->off, *end = p + e->len;
+    uint8_t rows[2][TILE_SIZE], *cur = rows[0], *prev = rows[1];
+    memset(rows, s_palette[0].argb, sizeof(rows));   // above the first row: colour 0
+    int kk = k > 0 ? k : 0, kl = k < 0 ? -k : 0, nrow = 0;
+    for (int y = y0; y < y1; y++) {
+      for (int sy = ((y - py) >> kk) << kl; nrow <= sy; nrow++) {   // rows come in order; each needs the one above
+        uint8_t *t = prev;
+        prev = cur;
+        cur = t;
+        p = tile_row(p, end, cur, prev);
+      }
+      GBitmapDataRowInfo ri = gbitmap_get_data_row_info(fb, y);   // round screens: a row is only part of the width
+      int xa = x0 > ri.min_x ? x0 : ri.min_x, xb = x1 - 1 < ri.max_x ? x1 - 1 : ri.max_x;
+      for (int x = xa; x <= xb; x++) ri.data[x] = cur[((x - px) >> kk) << kl];
+    }
+  }
+  return (x1 - x0) * (y1 - y0);
+}
+
+static void tile_draw(GContext *ctx, GRect fr) {
+  TileEnt *tab = tiles();
+  int32_t wx = s_cx - s_drag_x - fr.size.w / 2, wy = s_cy - s_drag_y - fr.size.h / 2;
+  int area = 0;
+  for (int i = 0; i < TILE_SLOTS; i++) area += tile_put(NULL, &tab[i], wx, wy, &fr, 1);
+  if (area < fr.size.w * fr.size.h) draw_map_placeholder(ctx, fr);   // tiles missing: the loading grid shows through
+  GBitmap *fb = graphics_capture_frame_buffer(ctx);
+  if (!fb) return;
+  for (int pass = 0; pass < 2; pass++) {   // other zooms (scaled) first, then this zoom on top
+    for (int i = 0; i < TILE_SLOTS; i++) tile_put(fb, &tab[i], wx, wy, &fr, pass);
+  }
+  graphics_release_frame_buffer(ctx, fb);
+}
+
+// A batch of tiles from the phone: a TileEnt, then its bytes, again and again
+static void tile_store(DictionaryIterator *it, const Tuple *dt) {
+  TileEnt *tab = tiles(), r;
+  const uint8_t *p = dt->value->data, *e = p + dt->length;
+  while (e - p >= (int)sizeof(r)) {
+    memcpy(&r, p, sizeof(r));
+    p += sizeof(r);
+    if (r.slot >= TILE_SLOTS || r.off < TILE_START || r.off + r.len > map_arena_end() || p + r.len > e) break;
+    memcpy((uint8_t *)tab + r.off, p, r.len);
+    p += r.len;
+    for (int i = 0; i < TILE_SLOTS; i++) {   // whatever this overwrote is gone
+      if (tab[i].len && tab[i].off < r.off + r.len && r.off < tab[i].off + tab[i].len) tab[i].len = 0;
+    }
+    tab[r.slot] = r;
+  }
+  if (tuple_int(it, MESSAGE_KEY_flags, 0) & 1) g_map.complete = true;   // the screen's tiles are all in
+  if (g_map.complete) notify();
+}
+#endif
+
 void map_adjust(int action, int dx, int dy) {
+  int num = s_pan_id;
+#if TOUCH_HW
+  if (s_tile && action <= ADJ_PAN) {
+    tile_move(action, dx, dy);
+    action = ADJ_VIEW;
+    dx = s_cx;
+    dy = s_cy;
+    num = s_tz;
+  } else
+#endif
   if (action == ADJ_PAN) {
     s_pan_id = s_pan_id % 30000 + 1;
     if (s_npans == MAX_PANS) {
@@ -356,7 +517,7 @@ void map_adjust(int action, int dx, int dy) {
   m.idx = action;
   m.width = dx;
   m.height = dy;
-  m.num = s_pan_id;
+  m.num = num;
   comm_send(&m);
   notify();
 }
@@ -409,6 +570,15 @@ static void begin(DictionaryIterator *it) {
     int n = pt->length > 16 ? 16 : pt->length;
     for (int i = 0; i < n; i++) s_palette[i].argb = pt->value->data[i];
   }
+#endif
+#if TOUCH_HW
+  if (tuple_int(it, MESSAGE_KEY_fmt, 0) == FMT_TILES) {   // tile mode: only where the view is; tiles follow
+    g_map.w = w;
+    g_map.h = h;
+    tile_begin(it);
+    return;
+  }
+  s_tile = false;
 #endif
   int id = tuple_int(it, MESSAGE_KEY_img, 0);
   int ref = tuple_int(it, MESSAGE_KEY_ref, 0);
@@ -478,6 +648,10 @@ static void show_now(void *c) {
   if (g_map.bmp && !g_map.complete) { all_valid(); g_map.complete = true; notify(); }
 }
 
+static void arm_show(void) {
+  if (!s_show || !app_timer_reschedule(s_show, 2000)) s_show = app_timer_register(2000, show_now, NULL);
+}
+
 void map_handle(int cmd, DictionaryIterator *it) {
   int seq = tuple_int(it, MESSAGE_KEY_seq, -1);
   if (seq != g_map.seq) return;  // another screen's picture
@@ -487,7 +661,8 @@ void map_handle(int cmd, DictionaryIterator *it) {
     notify();
   } else if (cmd == CMD_MAP_CHUNK) {
     // a block of rows: starting at row `offset`, byte `num`, `stride` bytes per row
-    if (!s_show || !app_timer_reschedule(s_show, 2000)) s_show = app_timer_register(2000, show_now, NULL);
+    arm_show();
+    if (IS_TILE) return;
     if (!g_map.bmp || tuple_int(it, MESSAGE_KEY_img, -2) != g_map.chunk_img) return;
     uint8_t *base = gbitmap_get_data(s_buf);
     int bpr = s_bpr, rows = g_map.h;
@@ -519,6 +694,12 @@ void map_handle(int cmd, DictionaryIterator *it) {
       g_map.complete = true;
       notify();
     }
+#if TOUCH_HW
+  } else if (cmd == CMD_TILES) {
+    const Tuple *dt = dict_find(it, MESSAGE_KEY_data);
+    arm_show();
+    if (s_tile && dt) tile_store(it, dt);
+#endif
   } else if (cmd == CMD_MARKERS) {
     const Tuple *dt = dict_find(it, MESSAGE_KEY_data);
     g_map.n_markers = 0;
@@ -566,6 +747,12 @@ void map_handle(int cmd, DictionaryIterator *it) {
 #endif
       g_map.n_markers = n;
     }
+#if TOUCH_HW
+    if (s_tile) {   // tile mode: positions are counted from the view centre the phone says
+      g_map.shift_x = tuple_int(it, MESSAGE_KEY_idx, s_cx) - s_cx;
+      g_map.shift_y = tuple_int(it, MESSAGE_KEY_mode, s_cy) - s_cy;
+    }
+#endif
     notify();
   }
 }
@@ -612,6 +799,11 @@ int map_poi_near(GPoint p, GRect frame, int max_dist) {
 
 void map_draw(GContext *ctx, GRect frame, int selected) {
   int sx = g_map.shift_x + s_drag_x, sy = g_map.shift_y + s_drag_y;
+#if TOUCH_HW
+  if (s_tile && g_map.complete) {
+    tile_draw(ctx, frame);
+  } else
+#endif
   if (g_map.bmp && g_map.complete) {   // a new picture shows once its screen part is all here
     GRect r = GRect(frame.origin.x + (frame.size.w - g_map.w) / 2 + sx + s_v[0],
                     frame.origin.y + (frame.size.h - g_map.h) / 2 + sy + s_v[2], s_v[1] - s_v[0], s_v[3] - s_v[2]);

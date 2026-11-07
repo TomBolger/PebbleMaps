@@ -24,10 +24,12 @@ static bool s_cards_hidden;   // this navigation session only
 static int s_flags;
 static int s_man = MAN_DEPART;
 static int s_next_man = MAN_NONE;
-static char s_instr[128] = "Starting navigation";
-static char s_dist[24];
-static char s_remain[48];
-static char s_detail[64];
+// The texts live on the heap while the window does (the watch's RAM is tight)
+static struct { char instr[128], dist[24], remain[48], detail[64]; } *s_tx;
+#define s_instr (s_tx->instr)
+#define s_dist (s_tx->dist)
+#define s_remain (s_tx->remain)
+#define s_detail (s_tx->detail)
 static time_t s_arrive;
 static GPoint s_puck, s_focus;
 static bool s_have_puck;
@@ -568,6 +570,8 @@ static void window_unload(Window *window) {
   dots_layer_destroy(s_dots);
   layer_destroy(s_canvas);
   s_canvas = NULL;
+  free(s_tx);
+  s_tx = NULL;
   window_destroy(s_window);
   s_window = NULL;
 }
@@ -586,9 +590,14 @@ void nav_window_push(int mode) {
   s_flags = 0;
   s_man = MAN_DEPART;
   s_next_man = MAN_NONE;
-  strncpy(s_instr, "Starting navigation", sizeof(s_instr));
-  s_dist[0] = s_remain[0] = s_detail[0] = 0;
-  s_window = window_create();
+  s_tx = calloc(1, sizeof(*s_tx));
+  s_window = s_tx ? window_create() : NULL;
+  if (!s_window) {
+    free(s_tx);
+    s_tx = NULL;
+    return;
+  }
+  strncpy(s_instr, "Starting navigation", sizeof(s_instr) - 1);
   window_set_background_color(s_window, C_BG);
   window_set_click_config_provider(s_window, click_config);
   window_set_window_handlers(s_window, (WindowHandlers){

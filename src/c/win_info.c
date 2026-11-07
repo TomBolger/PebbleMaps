@@ -20,10 +20,12 @@ static Layer *s_content;
 static Layer *s_dots;
 static int s_src, s_idx;
 static bool s_loaded;
-static char s_name[64];
-static char s_meta[64];
-static char s_open[48];
-static char s_addr[96];
+// The texts live on the heap while the window does (the watch's RAM is tight)
+static struct { char name[64], meta[64], open[48], addr[96]; } *s_tx;
+#define s_name (s_tx->name)
+#define s_meta (s_tx->meta)
+#define s_open (s_tx->open)
+#define s_addr (s_tx->addr)
 static int s_rating, s_rcount, s_photos, s_photo, s_cat, s_flags;
 static ListItem *s_items;
 static int s_nitems;
@@ -389,6 +391,8 @@ static void window_unload(Window *window) {
   free(s_items);
   s_items = NULL;
   s_nitems = 0;
+  free(s_tx);
+  s_tx = NULL;
   window_destroy(s_window);
   s_window = NULL;
 }
@@ -403,11 +407,14 @@ void info_window_push(int src, int idx, const char *title) {
   s_photos = s_photo = s_rating = s_rcount = s_flags = 0;
   s_cat = MAP_CAT_OTHER;
   s_photo_seq = -1;
+  s_tx = calloc(1, sizeof(*s_tx));
+  s_window = s_tx ? window_create() : NULL;
+  if (!s_window) {
+    free(s_tx);
+    s_tx = NULL;
+    return;
+  }
   strncpy(s_name, title ? title : "", sizeof(s_name) - 1);
-  s_name[sizeof(s_name) - 1] = 0;
-  s_meta[0] = s_open[0] = s_addr[0] = 0;
-  s_window = window_create();
-  if (!s_window) return;
   window_set_background_color(s_window, C_BG);
   window_set_window_handlers(s_window, (WindowHandlers){
     .load = window_load, .appear = window_appear,

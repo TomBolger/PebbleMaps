@@ -4,6 +4,13 @@
 
 #define MAX_MARKERS 24
 
+// Tile mode (Pebble Time 2 / Round 2, north-up home map): the picture buffer holds compressed
+// TILE_SIZE x TILE_SIZE tiles instead of one picture. The first TILE_SLOTS entries of the buffer are the
+// tile table; the phone decides what goes where (see src/pkjs/tilestore.js).
+#define TILE_SIZE 64
+#define TILE_SLOTS 80
+#define TILE_START 1280   // TILE_SLOTS * 16 bytes: where the tile data area begins
+
 typedef struct {
   int16_t x, y;
   uint8_t kind;   // MK_*
@@ -46,6 +53,8 @@ void map_release(void);
 void map_reserve(void);
 // Size of the reserved picture buffer (screen plus margin)
 GSize map_buffer_size(void);
+// End of the tile data area in the buffer (0 when the watch has no tile mode)
+int map_arena_end(void);
 void map_handle(int cmd, DictionaryIterator *it);
 // Pan/zoom the current map: the picture moves/zooms right away, sharp detail follows
 void map_adjust(int action, int dx, int dy);
