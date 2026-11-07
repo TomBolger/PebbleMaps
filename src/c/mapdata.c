@@ -29,20 +29,6 @@ static GColor s_palette[16];
 static MapXformFn s_listener;
 static int16_t s_v[4];   // the part of the buffer with real map in it: x0, x1, y0, y1
 
-#if !PM_LOWMEM
-// Overview: a small, wide-area, low-resolution picture of the same map (one pixel = 2^(rzoom - zoom)
-// screen pixels), shown wherever the main picture doesn't reach
-static struct {
-  uint8_t *d;
-  int cap, w, h, stride, id, zoom, heading;
-  int32_t cx, cy;
-  bool ok;
-} s_ov;
-#ifdef PBL_COLOR
-static GColor s_ovpal[16];
-#endif
-static int s_last_cmd;
-#endif
 
 static uint32_t buf_bytes(int w, int h) {
 #ifdef PBL_COLOR
@@ -61,18 +47,12 @@ void map_reserve(void) {
   int sw = PBL_DISPLAY_WIDTH, sh = PBL_DISPLAY_HEIGHT;
   int free_now = (int)heap_bytes_free();
   int base = (int)buf_bytes(sw, sh);
-  int keep = free_now > 60000 ? 30000 : (PM_LOWMEM ? 10000 : 6400);   // memory left for screens and lists
-#if !PM_LOWMEM
-  // the overview (half the screen size, drawn 4x bigger) comes out of the same memory
-  s_ov.w = sw / 2;
-  s_ov.h = sh / 2;
-  s_ov.cap = (int)buf_bytes(s_ov.w, s_ov.h);
-  s_ov.d = malloc(s_ov.cap);
-  if (s_ov.d) free_now -= s_ov.cap;
-#endif
+  // memory left for screens and lists (touch watches measured: the deepest screen stack, home > places >
+  // results > place > info > modes > route, uses about 5.8 KB of it; the buffer itself takes ~0.9 KB more)
+  int keep = TOUCH_HW ? 10500 : (free_now > 60000 ? 30000 : 10000);
   int avail = free_now - base - keep;
   int m = (sw > sh ? sw : sh) / 3;
-  while (m > 0 && (int)buf_bytes(sw + 2 * m, sh + 2 * m) - base > avail) m -= 4;
+  while (m > 0 && (int)buf_bytes(sw + 2 * m, sh + 2 * m) - base > avail) m -= 2;
   if (m < 0) m = 0;
   s_buf_size = GSize(sw + 2 * m, sh + 2 * m);
   APP_LOG(APP_LOG_LEVEL_INFO, "map buffer %dx%d (free before %d)", s_buf_size.w, s_buf_size.h, free_now);
@@ -391,11 +371,6 @@ static void comm_fast(void) {
 
 int map_request(int cmd, int w, int h, int idx, int mode) {
   comm_fast();
-#if !PM_LOWMEM
-  // the home map comes back where it was: its overview stays up until the new picture arrives
-  if (cmd != CMD_HOME_MAP || s_last_cmd != cmd) s_ov.ok = false;
-  s_last_cmd = cmd;
-#endif
   map_release();
   g_map.n_markers = 0;
   s_npans = 0;
@@ -421,26 +396,6 @@ static void begin(DictionaryIterator *it) {
   int w = tuple_int(it, MESSAGE_KEY_width, 0);
   int h = tuple_int(it, MESSAGE_KEY_height, 0);
   if (w <= 0 || h <= 0) return;
-#if !PM_LOWMEM
-  if (tuple_int(it, MESSAGE_KEY_flags, 0) & 2) {   // the overview, not the main picture
-    int st = tuple_int(it, MESSAGE_KEY_stride, 0);
-    s_ov.ok = false;   // not shown until its last piece is in
-    if (!s_ov.d || st <= 0 || st * h > s_ov.cap) return;
-    s_ov.w = w;
-    s_ov.h = h;
-    s_ov.stride = st;
-    s_ov.id = tuple_int(it, MESSAGE_KEY_img, 0);
-    s_ov.cx = tuple_int(it, MESSAGE_KEY_idx, 0);
-    s_ov.cy = tuple_int(it, MESSAGE_KEY_mode, 0);
-    s_ov.zoom = tuple_int(it, MESSAGE_KEY_num, 0);
-    s_ov.heading = tuple_int(it, MESSAGE_KEY_num2, 0);
-#ifdef PBL_COLOR
-    const Tuple *pt = dict_find(it, MESSAGE_KEY_palette);
-    if (pt) memcpy(s_ovpal, pt->value->data, pt->length > 16 ? 16 : pt->length);
-#endif
-    return;
-  }
-#endif
   map_reserve();
   if (!s_buf || !s_tmp) {
     APP_LOG(APP_LOG_LEVEL_ERROR, "map buffer missing");
@@ -532,24 +487,12 @@ void map_handle(int cmd, DictionaryIterator *it) {
     notify();
   } else if (cmd == CMD_MAP_CHUNK) {
     // a block of rows: starting at row `offset`, byte `num`, `stride` bytes per row
-    int fl = tuple_int(it, MESSAGE_KEY_flags, 1), img = tuple_int(it, MESSAGE_KEY_img, -2);
-    uint8_t *base = NULL;
+    if (!s_show || !app_timer_reschedule(s_show, 2000)) s_show = app_timer_register(2000, show_now, NULL);
+    if (!g_map.bmp || tuple_int(it, MESSAGE_KEY_img, -2) != g_map.chunk_img) return;
+    uint8_t *base = gbitmap_get_data(s_buf);
     int bpr = s_bpr, rows = g_map.h;
-#if !PM_LOWMEM
-    if (fl & 2) {   // the overview
-      if (img != s_ov.id) return;
-      base = s_ov.d;
-      bpr = s_ov.stride;
-      rows = s_ov.h;
-    } else
-#endif
-    {
-      if (!s_show || !app_timer_reschedule(s_show, 2000)) s_show = app_timer_register(2000, show_now, NULL);
-      if (!g_map.bmp || img != g_map.chunk_img) return;
-      base = gbitmap_get_data(s_buf);
-    }
     const Tuple *dt = dict_find(it, MESSAGE_KEY_data);
-    if (!dt || !base) return;
+    if (!dt) return;
     int y = tuple_int(it, MESSAGE_KEY_offset, 0);
     int xb = tuple_int(it, MESSAGE_KEY_num, 0);
     int stride = tuple_int(it, MESSAGE_KEY_stride, bpr);
@@ -571,15 +514,9 @@ void map_handle(int cmd, DictionaryIterator *it) {
       }
     }
     // redraw only once the screen's part of the picture is all here (no slow wipe)
-    if (fl & 1) {
-#if !PM_LOWMEM
-      if (fl & 2) s_ov.ok = true;
-      else
-#endif
-      {
-        all_valid();
-        g_map.complete = true;
-      }
+    if (tuple_int(it, MESSAGE_KEY_flags, 1)) {
+      all_valid();
+      g_map.complete = true;
       notify();
     }
   } else if (cmd == CMD_MARKERS) {
@@ -673,52 +610,15 @@ int map_poi_near(GPoint p, GRect frame, int max_dist) {
   return near_marker(p, frame, max_dist, false);
 }
 
-// Where the main picture doesn't reach: the overview, blown up, or else the "loading" look
-static void draw_backdrop(GContext *ctx, GRect f, int sx, int sy) {
-#if !PM_LOWMEM
-  int d = g_map.rzoom - s_ov.zoom, vx = 0, vy = 0;
-  int32_t dx = 0, dy = 0;
-  bool use = s_ov.ok && s_ov.heading == g_map.rheading && d >= 0 && d <= 3;
-  if (use) {
-    dx = (s_ov.cx << d) - g_map.rcx;
-    dy = (s_ov.cy << d) - g_map.rcy;
-    use = dx > -2000 && dx < 2000 && dy > -2000 && dy < 2000;
-  }
-  if (use) {
-    to_screen(dx, dy, g_map.rheading, &vx, &vy);
-    int ox = f.origin.x + f.size.w / 2 + sx + vx - ((s_ov.w / 2) << d);
-    int oy = f.origin.y + f.size.h / 2 + sy + vy - ((s_ov.h / 2) << d), bs = 1 << d;
-    if (ox > f.origin.x || oy > f.origin.y || ox + (s_ov.w << d) < f.origin.x + f.size.w ||
-        oy + (s_ov.h << d) < f.origin.y + f.size.h) {
-      draw_map_placeholder(ctx, f);
-    }
-    for (int j = 0; j < s_ov.h; j++) {
-      int y = oy + (j << d);
-      if (y + bs <= f.origin.y || y >= f.origin.y + f.size.h) continue;
-      const uint8_t *row = s_ov.d + j * s_ov.stride;
-      for (int i = 0; i < s_ov.w;) {
-        int v = pget(row, i), e = i + 1;
-        while (e < s_ov.w && pget(row, e) == v) e++;
-        graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(s_ovpal[v], v ? GColorWhite : GColorBlack));
-        graphics_fill_rect(ctx, GRect(ox + (i << d), y, (e - i) << d, bs), 0, GCornerNone);
-        i = e;
-      }
-    }
-    return;
-  }
-#endif
-  draw_map_placeholder(ctx, f);
-}
-
 void map_draw(GContext *ctx, GRect frame, int selected) {
   int sx = g_map.shift_x + s_drag_x, sy = g_map.shift_y + s_drag_y;
   if (g_map.bmp && g_map.complete) {   // a new picture shows once its screen part is all here
     GRect r = GRect(frame.origin.x + (frame.size.w - g_map.w) / 2 + sx + s_v[0],
                     frame.origin.y + (frame.size.h - g_map.h) / 2 + sy + s_v[2], s_v[1] - s_v[0], s_v[3] - s_v[2]);
-    // only the strips the picture doesn't cover get the backdrop
+    // only the strips the picture doesn't cover get the "loading" look
     if (r.origin.x > frame.origin.x || r.origin.y > frame.origin.y ||
         r.origin.x + r.size.w < frame.origin.x + frame.size.w || r.origin.y + r.size.h < frame.origin.y + frame.size.h) {
-      draw_backdrop(ctx, frame, sx, sy);
+      draw_map_placeholder(ctx, frame);
     }
     if (r.size.w > 0 && r.size.h > 0) {
       graphics_context_set_compositing_mode(ctx, GCompOpAssign);
@@ -727,7 +627,7 @@ void map_draw(GContext *ctx, GRect frame, int selected) {
       gbitmap_set_bounds(g_map.bmp, GRect(0, 0, g_map.w, g_map.h));
     }
   } else {
-    draw_backdrop(ctx, frame, sx, sy);
+    draw_map_placeholder(ctx, frame);
   }
   // places first (names as pills, skipping any that would cover another), then start / you,
   // then pins, the selected pin last (on top)

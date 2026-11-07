@@ -197,7 +197,7 @@ void comm_init(void) {
   uint32_t in_max = app_message_inbox_size_maximum();
   uint32_t cap = PM_LOWMEM ? 1280 : 2048;  // 64 KB watches: memory is tight
 #if defined(PBL_PLATFORM_EMERY) || defined(PBL_PLATFORM_GABBRO)
-  cap = 8192;
+  cap = 4096;   // the rest of the memory goes to a bigger map picture (messages just come in smaller pieces)
 #endif
   uint32_t in_size = in_max < cap ? in_max : cap;
   g_app.inbox_size = in_size;
