@@ -201,7 +201,60 @@ function clear() {
   prefetchQueue = [];
 }
 
+// --- Tile mode (Pebble Time 2 / Round 2 home map) ----------------------------------------
+// The watch holds small world-aligned squares. They are cut from the same 640x640 pictures, at whole-pixel
+// positions. Google puts its logo and copyright along the bottom edge, so that strip is not used.
+var EDGE = 2, EDGE_BOTTOM = 32;
+
+function usable(t) {
+  var x0 = Math.round(t.x0), y0 = Math.round(t.y0);
+  return { x0: x0 + EDGE, y0: y0 + EDGE, x1: x0 + t.w - EDGE, y1: y0 + t.h - EDGE_BOTTOM };
+}
+
+// A cached picture (same style and zoom as o) that covers the world rectangle r = { x0, y0, x1, y1 }, or null
+function peekRect(o, r) {
+  var key = styleKey(o);
+  for (var i = 0; i < tiles.length; i++) {
+    var t = tiles[i];
+    if (t.key !== key) continue;
+    var u = usable(t);
+    if (r.x0 >= u.x0 && r.y0 >= u.y0 && r.x1 <= u.x1 && r.y1 <= u.y1) {
+      if (i > 0) { tiles.splice(i, 1); tiles.unshift(t); }
+      return t;
+    }
+  }
+  return null;
+}
+
+// Where to centre a new picture so that it covers rect r, as near to `want` ([x, y] world px) as that allows
+function centreFor(r, want) {
+  var half = SIZE / 2;
+  return [Math.round(Math.max(r.x1 - (half - EDGE), Math.min(r.x0 + (half - EDGE), want[0]))),
+          Math.round(Math.max(r.y1 - (half - EDGE_BOTTOM), Math.min(r.y0 + (half - EDGE), want[1])))];
+}
+
+// Fetch a picture for o (zoom, style, format) centred on world point c. cb(err, picture)
+function fetchPicture(o, c, cb) {
+  fetchTile(o, styleKey(o), c, cb);
+}
+
+// The size x size block of base pixels whose top-left is world pixel (wx, wy), cut from picture t
+function cutBlock(t, wx, wy, size) {
+  var out = new Uint8Array(size * size);
+  var bg = image.background(t.format, t.style);
+  var ox = wx - Math.round(t.x0), oy = wy - Math.round(t.y0);
+  for (var y = 0; y < size; y++) {
+    var iy = oy + y, row = y * size;
+    for (var x = 0; x < size; x++) {
+      var ix = ox + x;
+      out[row + x] = (ix >= 0 && iy >= 0 && ix < t.w && iy < t.h) ? t.px[iy * t.w + ix] : bg;
+    }
+  }
+  return out;
+}
+
 function cancelPrefetch() { prefetchQueue = []; }
 
 module.exports = { get: get, styleKey: styleKey, prefetchAround: prefetchAround, clear: clear, SIZE: SIZE,
+  peekRect: peekRect, centreFor: centreFor, fetchPicture: fetchPicture, cutBlock: cutBlock,
   cancelPrefetch: cancelPrefetch, setIdleCheck: function (fn) { isIdle = fn; } };

@@ -82,10 +82,11 @@ static void send_hello(void) {
   m.width = b.size.w;
   m.height = b.size.h;
   m.num = PBL_IF_COLOR_ELSE(FMT_4BIT, FMT_1BIT);
-  m.mode = (g_app.has_mic ? 1 : 0) | (PBL_IF_ROUND_ELSE(1, 0) << 1) | (g_app.touch ? 4 : 0) | (PM_LOWMEM ? 8 : 0);
+  m.mode = (g_app.has_mic ? 1 : 0) | (PBL_IF_ROUND_ELSE(1, 0) << 1) | (g_app.touch ? 4 : 0) | (PM_LOWMEM ? 8 : 0) |
+           (map_arena_end() ? 16 : 0);   // 16: has tile mode
   m.idx = g_app.inbox_size;
   GSize bs = map_buffer_size();
-  snprintf(m.text, sizeof(m.text), "%d,%d", bs.w, bs.h);
+  snprintf(m.text, sizeof(m.text), "%d,%d,%d,%d", bs.w, bs.h, map_arena_end(), TILE_SLOTS);
   comm_send(&m);
   s_hello_sent = true;
 }
@@ -435,8 +436,15 @@ static void zoom(int action) {
 }
 static void up_long(ClickRecognizerRef r, void *ctx) { zoom(ADJ_ZOOM_IN); }
 static void down_long(ClickRecognizerRef r, void *ctx) { zoom(ADJ_ZOOM_OUT); }
+static int s_dbg_pan;   // TEMP DEBUG
 static void select_long(ClickRecognizerRef r, void *ctx) {
   activity();
+  if (g_app.configured) {   // TEMP DEBUG: long select pans 150 px: east, south, west, north...
+    static const int dx[4] = {150, 0, -150, 0}, dy[4] = {0, 150, 0, -150};
+    map_adjust(ADJ_PAN, dx[s_dbg_pan & 3], dy[s_dbg_pan & 3]);
+    s_dbg_pan++;
+    return;
+  }
   if (!g_app.configured) { show_setup(); return; }
   map_adjust(ADJ_RESET, 0, 0);
   ui_toast(s_window, "Back to you");

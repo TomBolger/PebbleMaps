@@ -50,6 +50,7 @@ enum {
   CMD_TOAST = 110,
   CMD_VOICE = 111,
   CMD_INFO_DATA = 112,
+  CMD_TILES = 113,
   CMD_VOICE_DONE = 30,
 };
 
@@ -82,7 +83,7 @@ enum { SRC_RESULTS = 0, SRC_FAVS = 1, SRC_RECENTS = 2, SRC_SUGGEST = 3, SRC_POI 
 enum { ERR_NO_KEY = 1, ERR_NO_LOCATION = 2, ERR_API = 3, ERR_NETWORK = 4, ERR_NO_RESULTS = 5 };
 
 // Map formats sent in CMD_HELLO
-enum { FMT_1BIT = 0, FMT_4BIT = 1 };
+enum { FMT_1BIT = 0, FMT_4BIT = 1, FMT_TILES = 2 };   // FMT_TILES: MAP_BEGIN of a tile-mode map (no picture follows)
 
 // Maneuver codes (must match protocol.js)
 enum {
@@ -94,7 +95,8 @@ enum {
 };
 
 // Map adjust actions
-enum { ADJ_ZOOM_IN = 0, ADJ_ZOOM_OUT = 1, ADJ_PAN = 2, ADJ_RESET = 3, ADJ_FIT_ROUTE = 4 };
+// ADJ_VIEW (tile mode): "the view is now centered at world pixel (width, height) at zoom num"
+enum { ADJ_ZOOM_IN = 0, ADJ_ZOOM_OUT = 1, ADJ_PAN = 2, ADJ_RESET = 3, ADJ_FIT_ROUTE = 4, ADJ_VIEW = 5 };
 
 // NAV flags
 #define NAV_ALERT_SOON  (1 << 0)
