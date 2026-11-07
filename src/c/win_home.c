@@ -465,6 +465,8 @@ static void touch_cb(const TouchEvent *e, void *ctx) {
     else press(BUTTON_ID_SELECT);
     return;
   }
+  // touching the map tucks the side buttons away (when auto-hide is on)
+  if (e->type == TouchEvent_Touchdown && g_app.hide_s && !s_bar.open && !s_gear) slide_to(STRIP_W);
   maptouch_event(&s_touch, e);
 }
 
