@@ -442,7 +442,9 @@ static int tile_put(GBitmap *fb, const TileEnt *e, int32_t wx, int32_t wy, const
         cur = t;
         p = tile_row(p, end, cur, prev);
       }
-      GBitmapDataRowInfo ri = gbitmap_get_data_row_info(fb, y);   // round screens: a row is only part of the width
+      // round screens: a row is only part of the width. The frame buffer counts from the top of the
+      // screen; a frame starting above 0 means the layer itself is lower (the keyboard sliding up)
+      GBitmapDataRowInfo ri = gbitmap_get_data_row_info(fb, y - fr->origin.y);
       int xa = x0 > ri.min_x ? x0 : ri.min_x, xb = x1 - 1 < ri.max_x ? x1 - 1 : ri.max_x;
       for (int x = xa; x <= xb; x++) ri.data[x] = cur[((x - px) >> kk) << kl];
     }

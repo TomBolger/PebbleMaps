@@ -38,18 +38,28 @@ void pop_to_home(void) {
 // s_off: how far the strip has slid out to the right (0 = shown, STRIP_W = gone)
 #define TAB_ZONE 24
 static int s_off, s_target;
+// s_pc: how far the search bar has shrunk to its round button (0 = full bar, STRIP_W = button);
+// it shrinks when the strip hides and only grows back when tapped
+static int s_pc, s_pc_target;
+static bool s_kb_pending;   // open the keyboard once the bar has grown back
 static AppTimer *s_hide_timer, *s_slide_timer;
+static void open_keyboard(void);
 
 static void slide_cb(void *ctx) {
   s_slide_timer = NULL;
   s_off += clampi(s_target - s_off, -(STRIP_W / 5), STRIP_W / 5);
+  s_pc += clampi(s_pc_target - s_pc, -(STRIP_W / 5), STRIP_W / 5);
   layer_mark_dirty(s_canvas);
-  if (s_off != s_target) s_slide_timer = app_timer_register(40, slide_cb, NULL);
+  if (s_off != s_target || s_pc != s_pc_target) s_slide_timer = app_timer_register(40, slide_cb, NULL);
+#if KEYBOARD_AVAILABLE
+  else if (s_kb_pending) { s_kb_pending = false; open_keyboard(); }
+#endif
 }
 
 static void slide_to(int target) {
   s_target = target;
-  if (s_off != target && !s_slide_timer) s_slide_timer = app_timer_register(40, slide_cb, NULL);
+  if (target) s_pc_target = STRIP_W;   // hiding the strip also tucks the search bar away
+  if (!s_slide_timer) s_slide_timer = app_timer_register(40, slide_cb, NULL);
 }
 
 static void hide_cb(void *ctx);
@@ -187,6 +197,24 @@ static void handle(int cmd, DictionaryIterator *it, void *ctx) {
   }
 }
 
+// The search bar: full width, or shrunk from the right down to a round button (s_pc)
+static GRect pill_rect(GRect b, int vw) {
+  int ph = g_fonts.small_h + 10;
+#ifdef PBL_ROUND
+  int rad = b.size.w / 2;
+  int py = b.size.h / 9;
+  int dy = rad - py;
+  int half = 0;
+  while ((half + 1) * (half + 1) + dy * dy <= rad * rad) half++;
+  half -= 10;
+  GRect pill = GRect(rad - half, py, half * 2, ph);
+#else
+  GRect pill = GRect(6, 6, vw - 12, ph);
+#endif
+  pill.size.w -= (pill.size.w - ph) * s_pc / STRIP_W;
+  return pill;
+}
+
 static void canvas_update(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
   int vw = b.size.w - STRIP_W + s_off;   // width not covered by the strip right now
@@ -197,24 +225,14 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   // Search pill (Google style), touch layout only - hidden while moving the map
   if (!s_bar.open && !g_app.buttons_ui) {
     int ph = g_fonts.small_h + 10;
-#ifdef PBL_ROUND
-    int rad = b.size.w / 2;
-    int py = b.size.h / 9;
-    int dy = rad - py;
-    int half = 0;
-    while ((half + 1) * (half + 1) + dy * dy <= rad * rad) half++;
-    half -= 10;
-    GRect pill = GRect(rad - half, py, half * 2, ph);
-#else
-    GRect pill = GRect(6, 6, vw - 12, ph);
-#endif
+    GRect pill = pill_rect(b, vw);
 #ifdef PBL_COLOR
     ui_fill_rect(ctx, C_DIVIDER, GRect(pill.origin.x + 1, pill.origin.y + 2, pill.size.w, pill.size.h), ph / 2);
 #endif
     draw_card(ctx, pill, ph / 2);
     icon_draw(ctx, ICON_SEARCH, GPoint(pill.origin.x + 14, pill.origin.y + ph / 2), 14, C_TEXT, C_BG);
     graphics_context_set_text_color(ctx, C_TEXT);
-    ui_text(ctx, g_app.has_mic ? PBL_IF_ROUND_ELSE("Search", "Search here") : "Explore", g_fonts.small,
+    if (pill.size.w > 60) ui_text(ctx, g_app.has_mic ? PBL_IF_ROUND_ELSE("Search", "Search here") : "Explore", g_fonts.small,
                        GRect(pill.origin.x + 25, pill.origin.y + (ph - g_fonts.small_h) / 2 - 3, pill.size.w - 30, ph), GTextAlignmentLeft | TXT_ELLIPSIS);
   }
 #endif
@@ -472,7 +490,9 @@ static void touch_cb(const TouchEvent *e, void *ctx) {
 
 static void map_tap(GPoint p, void *ctx) {
   if (!g_app.configured) { show_setup(); return; }
-  bool in_pill = !s_bar.open && !g_app.buttons_ui && p.y < g_fonts.small_h + 20 + PBL_IF_ROUND_ELSE(24, 0);
+  // the search bar (only its round button on the left when it's tucked away)
+  bool in_pill = !s_bar.open && !g_app.buttons_ui && p.y < g_fonts.small_h + 20 + PBL_IF_ROUND_ELSE(24, 0) &&
+                 (!s_pc_target || p.x < PBL_IF_ROUND_ELSE(90, 44));
   if (!in_pill) {
     // a place on the map: its photos, hours and reviews
     int poi = map_poi_near(p, layer_get_bounds(s_canvas), 18);
@@ -482,6 +502,12 @@ static void map_tap(GPoint p, void *ctx) {
   // tapping the search bar opens the keyboard (the mic button is for voice)
 #if KEYBOARD_AVAILABLE
   if (!g_app.configured) { show_setup(); return; }
+  if (s_pc_target) {   // the round button: grow back into the bar, then type
+    s_pc_target = 0;
+    s_kb_pending = true;
+    if (!s_slide_timer) s_slide_timer = app_timer_register(40, slide_cb, NULL);
+    return;
+  }
   open_keyboard();
 #else
   press(BUTTON_ID_SELECT);
@@ -505,7 +531,8 @@ static void window_load(Window *window) {
 
 static void window_appear(Window *window) {
   comm_set_handler(handle, NULL);
-  s_off = s_target = 0;   // coming back: the side buttons are shown again
+  s_off = s_target = s_pc = s_pc_target = 0;   // coming back: side buttons and search bar shown again
+  s_kb_pending = false;
   activity();
   map_set_observer(s_canvas);
   if (TOUCH_HW && g_app.touch) touch_service_subscribe(touch_cb, NULL);

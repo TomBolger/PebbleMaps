@@ -488,7 +488,9 @@ static void draw_bar(GContext *ctx, GRect b) {
 static void update(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
   ui_fill_rect(ctx, C_BG, b, 0);
-  if (s_hooks.background) s_hooks.background(ctx, b, s_ctx);
+  // while the keyboard slides up, the map behind stays where it is
+  int fy = layer_get_frame(layer).origin.y;
+  if (s_hooks.background) s_hooks.background(ctx, GRect(0, -fy, b.size.w, b.size.h), s_ctx);
   draw_bar(ctx, b);
   draw_suggestions(ctx, b);
 
@@ -593,9 +595,14 @@ static void click_config(void *ctx) {
 
 static void window_load(Window *w) {
   Layer *root = window_get_root_layer(w);
-  s_layer = layer_create(layer_get_bounds(root));
+  GRect r = layer_get_bounds(root);
+  s_layer = layer_create(r);
   layer_set_update_proc(s_layer, update);
   layer_add_child(root, s_layer);
+  // slide up from the bottom (the screen above it still shows the map until it's in place)
+  GRect from = r;
+  from.origin.y = r.size.h;
+  animation_schedule(property_animation_get_animation(property_animation_create_layer_frame(s_layer, &from, &r)));
 }
 
 static void window_appear(Window *w) {
@@ -637,13 +644,13 @@ void keyboard_window_push(const char *placeholder, const char *action_label, con
   if (hooks) s_hooks = *hooks;
   s_ctx = ctx;
   s_window = window_create();
-  window_set_background_color(s_window, C_BG);
+  window_set_background_color(s_window, GColorClear);   // see window_load: the map stays visible above the rising keyboard
   window_set_click_config_provider(s_window, click_config);
   window_set_window_handlers(s_window, (WindowHandlers){
     .load = window_load, .appear = window_appear,
     .disappear = window_disappear, .unload = window_unload,
   });
-  window_stack_push(s_window, true);
+  window_stack_push(s_window, false);   // it slides up from the bottom instead (window_load)
 }
 
 #else
