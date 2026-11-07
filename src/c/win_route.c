@@ -13,10 +13,12 @@ static Layer *s_dots;
 static int s_mode;
 static bool s_loaded;
 static bool s_failed;
-static char s_dur[24];
-static char s_dist[24];
-static char s_via[64];
-static char s_extra[64];
+// The texts live on the heap while the window does (the watch's RAM is tight)
+static struct { char dur[24], dist[24], via[64], extra[64]; } *s_tx;
+#define s_dur (s_tx->dur)
+#define s_dist (s_tx->dist)
+#define s_via (s_tx->via)
+#define s_extra (s_tx->extra)
 static time_t s_arrive;
 static int s_traffic;
 
@@ -26,7 +28,7 @@ static void request(void) {
   GRect b = layer_get_bounds(window_get_root_layer(s_window));
   s_loaded = false;
   s_failed = false;
-  s_dur[0] = s_dist[0] = s_via[0] = s_extra[0] = 0;
+  memset(s_tx, 0, sizeof(*s_tx));
   map_request(CMD_ROUTE, b.size.w - STRIP_W, b.size.h - card_h(b), -1, s_mode);
   dots_layer_set_running(s_dots, true);
   layer_mark_dirty(s_canvas);
@@ -204,6 +206,8 @@ static void window_disappear(Window *window) {
 static void window_unload(Window *window) {
   dots_layer_destroy(s_dots);
   layer_destroy(s_canvas);
+  free(s_tx);
+  s_tx = NULL;
   window_destroy(s_window);
   s_window = NULL;
 }
@@ -213,7 +217,13 @@ void route_window_push(int mode) {
   if (heap_bytes_free() < 4000) results_window_close();   // short on memory (Time, Time Round)
   s_mode = mode;
   s_loaded = false;
-  s_window = window_create();
+  s_tx = calloc(1, sizeof(*s_tx));
+  s_window = s_tx ? window_create() : NULL;
+  if (!s_window) {
+    free(s_tx);
+    s_tx = NULL;
+    return;
+  }
   window_set_background_color(s_window, C_BG);
   window_set_click_config_provider(s_window, click_config);
   window_set_window_handlers(s_window, (WindowHandlers){

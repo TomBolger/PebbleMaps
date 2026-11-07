@@ -21,7 +21,10 @@
     "enableMultiJS": true,
     "targetPlatforms": [
       "basalt",
+      "chalk",
       "diorite",
+      "emery",
+      "flint",
       "gabbro"
     ],
     "watchapp": {

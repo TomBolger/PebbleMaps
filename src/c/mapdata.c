@@ -451,7 +451,6 @@ static int tile_put(GBitmap *fb, const TileEnt *e, int32_t wx, int32_t wy, const
 }
 
 static void tile_draw(GContext *ctx, GRect fr) {
-  time_t t0s; uint16_t t0ms; time_ms(&t0s, &t0ms);   // TEMP DEBUG
   TileEnt *tab = tiles();
   int32_t wx = s_cx - s_drag_x - fr.size.w / 2, wy = s_cy - s_drag_y - fr.size.h / 2;
   int area = 0;
@@ -463,7 +462,6 @@ static void tile_draw(GContext *ctx, GRect fr) {
     for (int i = 0; i < TILE_SLOTS; i++) tile_put(fb, &tab[i], wx, wy, &fr, pass);
   }
   graphics_release_frame_buffer(ctx, fb);
-  { time_t t1s; uint16_t t1ms; time_ms(&t1s, &t1ms); APP_LOG(APP_LOG_LEVEL_INFO, "TDRAW %d ms (area %d of %d)", (int)((t1s - t0s) * 1000 + t1ms - t0ms), area, fr.size.w * fr.size.h); }   // TEMP DEBUG
 }
 
 // A batch of tiles from the phone: a TileEnt, then its bytes, again and again

@@ -436,15 +436,8 @@ static void zoom(int action) {
 }
 static void up_long(ClickRecognizerRef r, void *ctx) { zoom(ADJ_ZOOM_IN); }
 static void down_long(ClickRecognizerRef r, void *ctx) { zoom(ADJ_ZOOM_OUT); }
-static int s_dbg_pan;   // TEMP DEBUG
 static void select_long(ClickRecognizerRef r, void *ctx) {
   activity();
-  if (g_app.configured) {   // TEMP DEBUG: long select pans 150 px: east, south, west, north...
-    static const int dx[4] = {150, 0, -150, 0}, dy[4] = {0, 150, 0, -150};
-    map_adjust(ADJ_PAN, dx[s_dbg_pan & 3], dy[s_dbg_pan & 3]);
-    s_dbg_pan++;
-    return;
-  }
   if (!g_app.configured) { show_setup(); return; }
   map_adjust(ADJ_RESET, 0, 0);
   ui_toast(s_window, "Back to you");

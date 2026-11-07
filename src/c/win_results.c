@@ -16,10 +16,12 @@ static ListItem *s_items;
 static int s_count;
 static int s_sel;
 static bool s_loaded;
-static char s_title[48];
-static char s_query[160];
+// The texts live on the heap while the window does (the watch's RAM is tight)
+static struct { char title[48], query[160], status[96]; } *s_tx;
+#define s_title (s_tx->title)
+#define s_query (s_tx->query)
+#define s_status (s_tx->status)
 static int s_category = -1;
-static char s_status[96];
 
 
 static int card_h(void) { return g_fonts.body_h + g_fonts.small_h * 2 + PBL_IF_ROUND_ELSE(14, 8); }
@@ -322,18 +324,31 @@ static void window_unload(Window *window) {
   s_canvas = NULL;
   free(s_items);
   s_items = NULL;
+  free(s_tx);
+  s_tx = NULL;
   window_destroy(s_window);
   s_window = NULL;
 }
 
-static void push(void) {
+// Make room for a new results screen (the one showing, if any, goes first); false if there is no memory
+static bool take(void) {
   if (s_window) window_stack_remove(s_window, false);
+  s_tx = calloc(1, sizeof(*s_tx));
+  return s_tx != NULL;
+}
+
+static void push(void) {
   // short on memory (Pebble Time, Time Round): drop the lists underneath first
   if (heap_bytes_free() < 4000) list_windows_close_all();
   s_count = 0;
   s_sel = 0;
   s_loaded = false;
   s_window = window_create();
+  if (!s_window) {
+    free(s_tx);
+    s_tx = NULL;
+    return;
+  }
   window_set_background_color(s_window, C_MAPBG);
   window_set_click_config_provider(s_window, results_click_config);
   window_set_window_handlers(s_window, (WindowHandlers){
@@ -349,6 +364,7 @@ void results_window_close(void) {
 }
 
 void results_window_push_search(const char *query) {
+  if (!take()) return;
   s_category = -1;
   strncpy(s_query, query, sizeof(s_query) - 1);
   s_query[sizeof(s_query) - 1] = 0;
@@ -357,8 +373,8 @@ void results_window_push_search(const char *query) {
 }
 
 void results_window_push_nearby(int category) {
+  if (!take()) return;
   s_category = category;
-  s_query[0] = 0;
   snprintf(s_title, sizeof(s_title), PBL_IF_ROUND_ELSE("%s", "%s nearby"), CATEGORY_NAMES[category]);
   push();
 }
