@@ -541,10 +541,11 @@ function pushImage(seq, img, plan, info, markers, opts) {
 
 // view: {center, zoom, w, h (screen area), path?, gmarkers?}
 // markers: array of {x,y,kind,index} or null. done(err) once the picture starts streaming.
-// The home map on Pebble Time 2 / Round 2 (north up): tiles instead of one picture
+// The home map on Pebble Time 2 / Round 2 when it isn't turned: tiles instead of one picture
 function tileEligible(seq, view) {
   var st = views.home;
-  return watch.tile && followMode !== 0 && lastKind === 'home' && !!st && st.seq === seq && st.view === view && !navState;
+  // any home map that isn't turned (north up, or heading-up while standing still)
+  return watch.tile && !view.heading && lastKind === 'home' && !!st && st.seq === seq && st.view === view && !navState;
 }
 
 function tileFail(err) {
