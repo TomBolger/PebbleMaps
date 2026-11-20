@@ -758,36 +758,61 @@ static void strip_dots(GContext *ctx, int cx, int y, int page, int pages) {
   }
 }
 
+#ifdef PBL_ROUND
+// Round screens: the middle of the strip's visible part at height dy from the screen's middle.
+// The strip is a big circle poking in from the right; the screen's own circle cuts its far edge.
+static int strip_cx(GRect bounds, int dy) {
+  int W = PBL_DISPLAY_WIDTH, R = bounds.size.h, sr = W / 2;
+  int right = W / 2 + isqrt(sr * sr - dy * dy);
+  int left = W - STRIP_W + R - isqrt(R * R - dy * dy);
+  return (left + right) / 2 + (bounds.size.w - W);   // plus how far the strip has slid out
+}
+#endif
+
 void draw_action_strip(GContext *ctx, GRect bounds, const StripIcons *ic) {
   int w = STRIP_W;
-  int cx;
   int isz = PBL_IF_ROUND_ELSE(20, w >= 36 ? 22 : 19);
+  int cy = bounds.size.h / 2;
 #ifdef PBL_ROUND
   int R = bounds.size.h;
-  ui_fill_circle(ctx, C_BG, GPoint(bounds.size.w - w + R, bounds.size.h / 2), R);
-  ui_outline_circle(ctx, C_DIVIDER, GPoint(bounds.size.w - w + R, bounds.size.h / 2), R, 1);
-  cx = bounds.size.w - w / 2 - 4;
-  int dy = bounds.size.h / 4;
+  // The strip is the edge of a big circle poking in from the right. The firmware draws circles this big
+  // with gaps, so fill it row by row with a solid 2 px edge (the edge moves in step by step from the middle)
+  {
+    int ccx = bounds.size.w - w + R, half = R, prev = ccx - R;
+    for (int d = 0; d <= cy; d++) {
+      while (half > 0 && half * half + d * d > R * R) half--;
+      int lx = ccx - half;
+      for (int y = cy - d; y <= cy + d; y += d ? 2 * d : 1) {
+        if (y >= bounds.size.h || lx >= PBL_DISPLAY_WIDTH) continue;
+        ui_fill_rect(ctx, C_DIVIDER, GRect(prev - 2, y, lx - prev + 2, 1), 0);
+        ui_fill_rect(ctx, C_BG, GRect(lx, y, PBL_DISPLAY_WIDTH - lx, 1), 0);
+      }
+      prev = lx;
+    }
+  }
+  int dy = bounds.size.h / 5;   // top and bottom icons: well inside the circle's edge
+  int cx_mid = strip_cx(bounds, 0);
+  int cx_out = strip_cx(bounds, dy + isz / 2);   // the icon's far edge is where it is tightest
+  int cx_up = cx_out, cx_dn = cx_out;
 #else
   GRect strip = GRect(bounds.size.w - w, 0, w, bounds.size.h);
   ui_fill_rect(ctx, C_BG, strip, 0);
   ui_line(ctx, C_DIVIDER, GPoint(strip.origin.x, 0), GPoint(strip.origin.x, bounds.size.h));
-  cx = strip.origin.x + w / 2;
+  int cx_mid = strip.origin.x + w / 2, cx_up = cx_mid, cx_dn = cx_mid;
   int dy = bounds.size.h / 2 - 26;
   if (dy > 70) dy = 70;
 #endif
-  int cy = bounds.size.h / 2;
-  if (ic->up) icon_draw(ctx, ic->up, GPoint(cx, cy - dy), isz, or_default(ic->up_color, C_ICON), C_BG);
+  if (ic->up) icon_draw(ctx, ic->up, GPoint(cx_up, cy - dy), isz, or_default(ic->up_color, C_ICON), C_BG);
   if (ic->select) {
     if (ic->select_plain) {
-      icon_draw(ctx, ic->select, GPoint(cx, cy), isz - 2, C_ICON, C_BG);
+      icon_draw(ctx, ic->select, GPoint(cx_mid, cy), isz - 2, C_ICON, C_BG);
     } else {
-      draw_fab(ctx, GPoint(cx, cy), w >= 36 ? 15 : 12, ic->select, or_default(ic->select_color, C_BLUE));
+      draw_fab(ctx, GPoint(cx_mid, cy), w >= 36 ? 15 : 12, ic->select, or_default(ic->select_color, C_BLUE));
     }
   }
-  if (ic->up_pages > 1) strip_dots(ctx, cx, cy - dy + isz / 2 + 6, ic->up_page, ic->up_pages);
-  if (ic->pages > 1) strip_dots(ctx, cx, cy + 13, ic->page, ic->pages);
-  if (ic->down) icon_draw(ctx, ic->down, GPoint(cx, cy + dy), isz, or_default(ic->down_color, C_ICON), C_BG);
+  if (ic->up_pages > 1) strip_dots(ctx, cx_up, cy - dy + isz / 2 + 6, ic->up_page, ic->up_pages);
+  if (ic->pages > 1) strip_dots(ctx, cx_mid, cy + 13, ic->page, ic->pages);
+  if (ic->down) icon_draw(ctx, ic->down, GPoint(cx_dn, cy + dy), isz, or_default(ic->down_color, C_ICON), C_BG);
 }
 
 void draw_side_tab(GContext *ctx, GRect bounds, bool light) {
@@ -888,6 +913,23 @@ void vibe_now(void) {
 int16_t ui_separator_h(MenuLayer *menu, MenuIndex *index, void *ctx) {
   return SEP_PAD * 2 + 1;
 }
+
+#ifdef PBL_ROUND
+// Round screens: how far a list row's content must stay in from each side so it fits inside the
+// circle at the row's current place on screen (rows near the top and bottom are narrower).
+int ui_row_inset(MenuLayer *m, const Layer *cell) {
+  GRect f = layer_get_frame(cell);
+  int top = f.origin.y + scroll_layer_get_content_offset(menu_layer_get_scroll_layer(m)).y +
+            layer_get_frame(menu_layer_get_layer(m)).origin.y;
+  int r = PBL_DISPLAY_WIDTH / 2, cy = PBL_DISPLAY_HEIGHT / 2;
+  int mid = top + f.size.h / 2 - cy, a = mid - 12, b = mid + 12;   // the icon and text band
+  if (a < 0) a = -a;
+  if (b < 0) b = -b;
+  int dy = a > b ? a : b;
+  if (dy >= r - 8) dy = r - 8;
+  return r - isqrt(r * r - dy * dy) + 6;
+}
+#endif
 
 void ui_draw_separator(GContext *ctx, const Layer *cell, MenuIndex *index, void *cb) {
   GRect b = layer_get_bounds(cell);

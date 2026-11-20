@@ -119,7 +119,7 @@ void dots_layer_destroy(Layer *layer);
 #if defined(PBL_PLATFORM_EMERY)
 #define STRIP_W 36
 #else
-#define STRIP_W PBL_IF_ROUND_ELSE(40, 30)
+#define STRIP_W PBL_IF_ROUND_ELSE(44, 30)
 #endif
 typedef struct {
   IconId up, select, down;
@@ -133,6 +133,9 @@ typedef struct {
 void draw_side_tab(GContext *ctx, GRect bounds, bool light);   // light: white tab (for dark maps)
 // Half circle with an "i" on a list row's right edge (Select for more info)
 void draw_info_tab(GContext *ctx, GRect cell, bool hl);
+#ifdef PBL_ROUND
+int ui_row_inset(MenuLayer *m, const Layer *cell);
+#endif
 void draw_action_strip(GContext *ctx, GRect bounds, const StripIcons *icons);
 
 // Finish setting up one of the app's windows and push it (animated)
