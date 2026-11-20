@@ -5,7 +5,12 @@ Fonts g_fonts;
 
 #define PERSIST_TEXT_LEVEL 1
 
-static GFont F(const char *key) { return fonts_get_system_font(key); }
+// A Gothic system font by size, built from its resource name (e.g. "RESOURCE_ID_GOTHIC_18_BOLD")
+GFont ui_gothic(int size, bool bold) {
+  char key[32];
+  snprintf(key, sizeof(key), "RESOURCE_ID_GOTHIC_%d%s", size, bold ? "_BOLD" : "");
+  return fonts_get_system_font(key);
+}
 
 void ui_set_text_level(int level) {
   if (level < 0 || level > 2) {
@@ -16,37 +21,21 @@ void ui_set_text_level(int level) {
     level = 0;
 #endif
   }
+  // line heights (= font sizes) for: small, body, title, big
+  static const uint8_t H[3][4] = { {18, 18, 24, 24}, {18, 24, 28, 28}, {24, 28, 28, 30} };
+  const uint8_t *h = H[level];
   g_fonts.level = level;
-  g_fonts.chip = F(FONT_KEY_GOTHIC_14_BOLD);
-  switch (level) {
-    case 0:
-      g_fonts.small = F(FONT_KEY_GOTHIC_18);
-      g_fonts.small_b = F(FONT_KEY_GOTHIC_18_BOLD);
-      g_fonts.body = F(FONT_KEY_GOTHIC_18);
-      g_fonts.body_b = F(FONT_KEY_GOTHIC_18_BOLD);
-      g_fonts.title = F(FONT_KEY_GOTHIC_24_BOLD);
-      g_fonts.big = F(FONT_KEY_GOTHIC_24_BOLD);
-      g_fonts.small_h = 18; g_fonts.body_h = 18; g_fonts.title_h = 24; g_fonts.big_h = 24;
-      break;
-    case 1:
-      g_fonts.small = F(FONT_KEY_GOTHIC_18);
-      g_fonts.small_b = F(FONT_KEY_GOTHIC_18_BOLD);
-      g_fonts.body = F(FONT_KEY_GOTHIC_24);
-      g_fonts.body_b = F(FONT_KEY_GOTHIC_24_BOLD);
-      g_fonts.title = F(FONT_KEY_GOTHIC_28_BOLD);
-      g_fonts.big = F(FONT_KEY_GOTHIC_28_BOLD);
-      g_fonts.small_h = 18; g_fonts.body_h = 24; g_fonts.title_h = 28; g_fonts.big_h = 28;
-      break;
-    default:
-      g_fonts.small = F(FONT_KEY_GOTHIC_24);
-      g_fonts.small_b = F(FONT_KEY_GOTHIC_24_BOLD);
-      g_fonts.body = F(FONT_KEY_GOTHIC_28);
-      g_fonts.body_b = F(FONT_KEY_GOTHIC_28_BOLD);
-      g_fonts.title = F(FONT_KEY_GOTHIC_28_BOLD);
-      g_fonts.big = F(FONT_KEY_BITHAM_30_BLACK);
-      g_fonts.small_h = 24; g_fonts.body_h = 28; g_fonts.title_h = 28; g_fonts.big_h = 30;
-      break;
-  }
+  g_fonts.chip = ui_gothic(14, true);
+  g_fonts.small = ui_gothic(h[0], false);
+  g_fonts.small_b = ui_gothic(h[0], true);
+  g_fonts.body = ui_gothic(h[1], false);
+  g_fonts.body_b = ui_gothic(h[1], true);
+  g_fonts.title = ui_gothic(h[2], true);
+  g_fonts.big = level == 2 ? fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK) : ui_gothic(h[3], true);
+  g_fonts.small_h = h[0];
+  g_fonts.body_h = h[1];
+  g_fonts.title_h = h[2];
+  g_fonts.big_h = h[3];
 }
 
 void ui_init(void) {
@@ -110,8 +99,8 @@ static void rect(GContext *ctx, int x1, int y1, int x2, int y2, int radius) {
 }
 
 static void text_glyph(GContext *ctx, const char *t, GColor fg) {
-  GFont f = F(s_sz >= 28 ? FONT_KEY_GOTHIC_28_BOLD : (s_sz >= 20 ? FONT_KEY_GOTHIC_24_BOLD : FONT_KEY_GOTHIC_18_BOLD));
   int h = s_sz >= 28 ? 28 : (s_sz >= 20 ? 24 : 18);
+  GFont f = ui_gothic(h, true);
   ui_text_c(ctx, fg, t, f, GRect(s_c.x - s_sz / 2 - 4, s_c.y - h / 2 - h / 5, s_sz + 8, h + 4), GTextAlignmentCenter);
 }
 
@@ -338,7 +327,7 @@ void icon_draw(GContext *ctx, IconId id, GPoint c, int size, GColor fg, GColor b
     circle(ctx, 11, 20, 5, true);
     graphics_context_set_text_color(ctx, fg);
     GPoint t = P(19, 9);
-    ui_text(ctx, "A", F(FONT_KEY_GOTHIC_14_BOLD), GRect(t.x, t.y - 4, S(18), 18), GTextAlignmentCenter);
+    ui_text(ctx, "A", ui_gothic(14, true), GRect(t.x, t.y - 4, S(18), 18), GTextAlignmentCenter);
   } else if (id == ICON_MAP) {
     // folded paper map: crisp 2 px outline and folds
 #ifdef PBL_COLOR

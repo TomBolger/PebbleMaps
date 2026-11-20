@@ -72,6 +72,9 @@ typedef struct {
 } Fonts;
 extern Fonts g_fonts;
 
+// A Gothic system font: size 14, 18, 24, 28
+GFont ui_gothic(int size, bool bold);
+
 void ui_init(void);
 // level: 0..2, or 3 = automatic for this watch
 void ui_set_text_level(int level);

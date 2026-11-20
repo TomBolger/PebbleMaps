@@ -359,7 +359,7 @@ static void draw_key(GContext *ctx, GRect r, const char *label, bool pressed, bo
   ui_fill_rect(ctx, fill, r, 3);
   graphics_context_set_text_color(ctx, text);
   bool word = strlen(label) > 1;
-  GFont f = fonts_get_system_font(word ? FONT_KEY_GOTHIC_14_BOLD : FONT_KEY_GOTHIC_18_BOLD);
+  GFont f = ui_gothic(word ? 14 : 18, true);
   ui_text(ctx, label, f, GRect(r.origin.x, r.origin.y + (word ? 2 : -2), r.size.w, r.size.h), GTextAlignmentCenter);
 }
 
@@ -431,7 +431,7 @@ static void draw_key_preview(GContext *ctx, GRect b, GRect kr, KeyHit key) {
   ui_fill_rect(ctx, GColorWhite, head, 6);
   gpath_draw_filled(ctx, &tail);
   ui_fill_rect(ctx, C_BLUE, GRect(head.origin.x + 6, head.origin.y + head.size.h - 5, head.size.w - 12, 2), 0);
-  ui_text_c(ctx, GColorBlack, label, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD),
+  ui_text_c(ctx, GColorBlack, label, ui_gothic(28, true),
                      GRect(head.origin.x, head.origin.y + 1, head.size.w, head.size.h - 6), GTextAlignmentCenter);
 }
 
@@ -440,7 +440,7 @@ static void draw_suggestions(GContext *ctx, GRect b) {
   if (n == 0) return;
   GRect sr = sugg_rect(b);
   draw_card(ctx, GRect(sr.origin.x, sr.origin.y, sr.size.w, n * sugg_row_h()), 6);
-  GFont tf = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD), sf = fonts_get_system_font(FONT_KEY_GOTHIC_14);
+  GFont tf = ui_gothic(18, true), sf = ui_gothic(14, false);
   for (int i = 0; i < n; i++) {
     GRect r = sugg_row(b, i);
     bool hl = s_sugg_pressed == i;
@@ -500,7 +500,7 @@ static void update(Layer *layer, GContext *ctx) {
       bool accent = (key.kind == KeySend && s_text[0]) ||
                     (key.kind == KeyShift && !s_symbols && (s_shift || s_caps_lock));
       GRect kr = key_rect(b, row, i);
-      if (key.kind == KeySend && graphics_text_layout_get_content_size(s_action, fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),
+      if (key.kind == KeySend && graphics_text_layout_get_content_size(s_action, ui_gothic(14, true),
               GRect(0, 0, 200, 20), GTextOverflowModeFill, GTextAlignmentLeft).w > kr.size.w - 4) {
         // label doesn't fit (round screens): show a magnifier instead
         draw_key(ctx, kr, "", pressed, special, accent);
