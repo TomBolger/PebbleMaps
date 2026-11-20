@@ -515,7 +515,7 @@ static void map_tap(GPoint p, void *ctx) {
 static void touch_cb(const TouchEvent *e, void *ctx) {
   GRect b = layer_get_bounds(s_canvas);
   if (e->x >= b.size.w - STRIP_W && e->type == TouchEvent_Liftoff && !e->non_navigational) {
-    ButtonId btn = e->y < b.size.h / 3 ? BUTTON_ID_UP : (e->y > b.size.h * 2 / 3 ? BUTTON_ID_DOWN : BUTTON_ID_SELECT);
+    ButtonId btn = mapbar_strip_button(e->y, b.size.h);
     if (s_bar.open || s_menu_open) { press(btn); return; }
     if (btn == BUTTON_ID_SELECT) { menu_open(); return; }
   }
@@ -544,7 +544,7 @@ static void window_appear(Window *window) {
   comm_set_handler(handle, NULL);
   map_set_observer(s_canvas);
   map_set_xform_listener(on_xform);
-  if (TOUCH_HW && g_app.touch) touch_service_subscribe(touch_cb, NULL);
+  mapbar_touch_on(touch_cb);
 }
 
 static void window_disappear(Window *window) {
@@ -552,11 +552,9 @@ static void window_disappear(Window *window) {
   map_set_observer(NULL);
   map_set_xform_listener(NULL);
   ui_toast_cancel();
-  mapbar_deinit(&s_bar);
-  maptouch_deinit(&s_touch);
+  mapbar_leave(&s_bar, &s_touch);
   if (s_menu_timer) { app_timer_cancel(s_menu_timer); s_menu_timer = NULL; }
   s_menu_open = false;
-  if (g_app.touch_hw) touch_service_unsubscribe();
 }
 
 static void window_unload(Window *window) {

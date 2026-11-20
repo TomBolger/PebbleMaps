@@ -29,6 +29,11 @@ void mapbar_poke(MapBar *mb);             // restart the 5 s timeout
 bool mapbar_button(MapBar *mb, ButtonId b); // true if the bar handled it
 void mapbar_draw(MapBar *mb, GContext *ctx, GRect bounds);
 void mapbar_deinit(MapBar *mb);
+void mapbar_toggle(MapBar *mb);           // open it, or close it when open
+// Which of the three strip buttons a touch at height y falls on (screen height h)
+ButtonId mapbar_strip_button(int y, int h);
+// Small "the map can be moved" badge, top-left corner at (x, y)
+void mapbar_hint(GContext *ctx, int x, int y);
 
 // Touch gestures on a map area
 typedef void (*MapTapCallback)(GPoint p, void *ctx);
@@ -43,6 +48,17 @@ typedef struct {
   void *ctx;
   MapBar *bar;            // poked while touching
 } MapTouch;
+
+// Map screens: start / stop listening to the touch screen (touch watches only)
+#if TOUCH_HW
+void mapbar_touch_on(TouchServiceHandler cb);
+#else
+#define mapbar_touch_on(cb) ((void)0)
+#endif
+// A map screen going away: close its controls and stop the touch handling
+void mapbar_leave_(MapBar *mb, MapTouch *mt);
+// (no MapTouch on watches without a touch screen: keeps it out of RAM)
+#define mapbar_leave(mb, mt) mapbar_leave_(mb, TOUCH_HW ? (mt) : NULL)
 
 #if TOUCH_HW
 void maptouch_init(MapTouch *mt, GRect frame, MapTapCallback on_tap, void *ctx, MapBar *bar);

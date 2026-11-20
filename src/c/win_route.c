@@ -107,9 +107,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   if (s_bar.open) {
     mapbar_draw(&s_bar, ctx, b);
   } else {
-    GRect bd = GRect(PBL_IF_ROUND_ELSE(w / 2 - 10, 3), b.size.h - ch - 22, 20, 19);
-    draw_card(ctx, bd, 5);
-    icon_draw(ctx, ICON_MOVE, GPoint(bd.origin.x + 10, bd.origin.y + 9), 13, C_TEXT, C_BG);
+    mapbar_hint(ctx, PBL_IF_ROUND_ELSE(w / 2 - 10, 3), b.size.h - ch - 22);
   StripIcons ic = { .up = ICON_LIST, .select = ICON_NAV, .down = icon_for_mode((s_mode + 1) % MODE_COUNT),
                     .select_color = C_BLUE };
   draw_action_strip(ctx, b, &ic);
@@ -147,8 +145,7 @@ static void back_click(ClickRecognizerRef r, void *ctx) {
 }
 static void select_long(ClickRecognizerRef r, void *ctx) {
   if (!s_loaded) return;
-  if (s_bar.open) mapbar_close(&s_bar);
-  else mapbar_open(&s_bar);
+  mapbar_toggle(&s_bar);
 }
 
 static void click_config(void *ctx) {
@@ -164,8 +161,9 @@ static void touch_cb(const TouchEvent *e, void *ctx) {
   if (e->type != TouchEvent_Liftoff || e->non_navigational) return;
   GRect b = layer_get_bounds(s_canvas);
   if (e->x < b.size.w - STRIP_W) return;
-  if (e->y < b.size.h / 3) up_click(NULL, NULL);
-  else if (e->y > b.size.h * 2 / 3) down_click(NULL, NULL);
+  ButtonId btn = mapbar_strip_button(e->y, b.size.h);
+  if (btn == BUTTON_ID_UP) up_click(NULL, NULL);
+  else if (btn == BUTTON_ID_DOWN) down_click(NULL, NULL);
   else select_click(NULL, NULL);
 }
 
@@ -186,7 +184,7 @@ static void window_load(Window *window) {
 static void window_appear(Window *window) {
   comm_set_handler(handle, NULL);
   map_set_observer(s_canvas);
-  if (TOUCH_HW && g_app.touch) touch_service_subscribe(touch_cb, NULL);
+  mapbar_touch_on(touch_cb);
   if (!s_loaded || !g_map.bmp) request();
 }
 
@@ -195,9 +193,7 @@ static void window_disappear(Window *window) {
   comm_cmd(CMD_CANCEL);
   map_set_observer(NULL);
   ui_toast_cancel();
-  mapbar_deinit(&s_bar);
-  maptouch_deinit(&s_touch);
-  if (g_app.touch_hw) touch_service_unsubscribe();
+  mapbar_leave(&s_bar, &s_touch);
 }
 
 static void window_unload(Window *window) {

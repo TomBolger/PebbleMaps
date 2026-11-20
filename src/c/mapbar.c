@@ -48,6 +48,32 @@ void mapbar_close(MapBar *mb) {
   if (mb->cb) mb->cb(MB_EV_CLOSED, mb->ctx);
 }
 
+void mapbar_toggle(MapBar *mb) {
+  if (mb->open) mapbar_close(mb);
+  else mapbar_open(mb);
+}
+
+ButtonId mapbar_strip_button(int y, int h) {
+  return y < h / 3 ? BUTTON_ID_UP : (y > h * 2 / 3 ? BUTTON_ID_DOWN : BUTTON_ID_SELECT);
+}
+
+void mapbar_hint(GContext *ctx, int x, int y) {
+  draw_card(ctx, GRect(x, y, 20, 19), 5);
+  icon_draw(ctx, ICON_MOVE, GPoint(x + 10, y + 9), 13, C_TEXT, C_BG);
+}
+
+#if TOUCH_HW
+void mapbar_touch_on(TouchServiceHandler cb) {
+  if (g_app.touch) touch_service_subscribe(cb, NULL);
+}
+#endif
+
+void mapbar_leave_(MapBar *mb, MapTouch *mt) {
+  mapbar_deinit(mb);
+  maptouch_deinit(mt);
+  if (g_app.touch_hw) touch_service_unsubscribe();
+}
+
 void mapbar_deinit(MapBar *mb) {
   if (mb->timer) app_timer_cancel(mb->timer);
   mb->timer = NULL;

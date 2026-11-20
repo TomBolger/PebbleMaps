@@ -237,8 +237,7 @@ static void select_click(ClickRecognizerRef r, void *ctx) { press(BUTTON_ID_SELE
 static void back_click(ClickRecognizerRef r, void *ctx) { press(BUTTON_ID_BACK); }
 static void select_long(ClickRecognizerRef r, void *ctx) {
   if (!s_count) return;
-  if (s_bar.open) mapbar_close(&s_bar);
-  else mapbar_open(&s_bar);
+  mapbar_toggle(&s_bar);
 }
 
 static void results_click_config(void *ctx) {
@@ -272,7 +271,7 @@ static void touch_cb(const TouchEvent *e, void *ctx) {
   GRect b = layer_get_bounds(s_canvas);
   if (e->x >= b.size.w - STRIP_W && e->type == TouchEvent_Liftoff && !e->non_navigational) {
     if (s_bar.open) {
-      mapbar_button(&s_bar, e->y < b.size.h / 3 ? BUTTON_ID_UP : (e->y > b.size.h * 2 / 3 ? BUTTON_ID_DOWN : BUTTON_ID_SELECT));
+      mapbar_button(&s_bar, mapbar_strip_button(e->y, b.size.h));
       return;
     }
     if (abs(e->y - b.size.h / 2) < 30) { mapbar_open(&s_bar); return; }
@@ -300,7 +299,7 @@ static void window_load(Window *window) {
 static void window_appear(Window *window) {
   comm_set_handler(handle, NULL);
   map_set_observer(s_canvas);
-  if (TOUCH_HW && g_app.touch) touch_service_subscribe(touch_cb, NULL);
+  mapbar_touch_on(touch_cb);
   if (s_loaded && s_count && !g_map.bmp) request_map(true);
 }
 
@@ -309,9 +308,7 @@ static void window_disappear(Window *window) {
   comm_cmd(CMD_CANCEL);
   map_set_observer(NULL);
   ui_toast_cancel();
-  mapbar_deinit(&s_bar);
-  maptouch_deinit(&s_touch);
-  if (g_app.touch_hw) touch_service_unsubscribe();
+  mapbar_leave(&s_bar, &s_touch);
 }
 
 static void window_unload(Window *window) {

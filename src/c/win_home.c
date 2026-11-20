@@ -477,9 +477,7 @@ static void touch_cb(const TouchEvent *e, void *ctx) {
   // the strip (or, hidden, the edge where its tab is) is not part of the map
   if (!s_touch.down && e->x >= b.size.w - (s_target ? TAB_ZONE : STRIP_W)) {
     if (e->type != TouchEvent_Liftoff || e->non_navigational) return;
-    if (e->y < b.size.h / 3) press(BUTTON_ID_UP);
-    else if (e->y > b.size.h * 2 / 3) press(BUTTON_ID_DOWN);
-    else press(BUTTON_ID_SELECT);
+    press(mapbar_strip_button(e->y, b.size.h));
     return;
   }
   // touching the map tucks the side buttons away (when auto-hide is on)
@@ -534,7 +532,7 @@ static void window_appear(Window *window) {
   s_kb_pending = false;
   activity();
   map_set_observer(s_canvas);
-  if (TOUCH_HW && g_app.touch) touch_service_subscribe(touch_cb, NULL);
+  mapbar_touch_on(touch_cb);
   if (g_app.status_known && g_app.configured) {
     s_find_tries = 0;
     request_map(s_map_requested);
@@ -551,12 +549,10 @@ static void window_disappear(Window *window) {
   map_set_observer(NULL);
   ui_toast_cancel();
   gear_close();
-  mapbar_deinit(&s_bar);
   if (s_hide_timer) app_timer_cancel(s_hide_timer);
   if (s_slide_timer) app_timer_cancel(s_slide_timer);
   s_hide_timer = s_slide_timer = NULL;
-  maptouch_deinit(&s_touch);
-  if (g_app.touch_hw) touch_service_unsubscribe();
+  mapbar_leave(&s_bar, &s_touch);
 }
 
 static void window_unload(Window *window) {
