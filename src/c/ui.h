@@ -133,6 +133,9 @@ typedef struct {
 void draw_side_tab(GContext *ctx, GRect bounds, bool light);   // light: white tab (for dark maps)
 // Half circle with an "i" on a list row's right edge (Select for more info)
 void draw_info_tab(GContext *ctx, GRect cell, bool hl);
+#ifdef PBL_ROUND
+int ui_row_inset(MenuLayer *m, const Layer *cell);
+#endif
 void draw_action_strip(GContext *ctx, GRect bounds, const StripIcons *icons);
 
 // Finish setting up one of the app's windows and push it (animated)

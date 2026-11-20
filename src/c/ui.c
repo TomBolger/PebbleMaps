@@ -914,6 +914,23 @@ int16_t ui_separator_h(MenuLayer *menu, MenuIndex *index, void *ctx) {
   return SEP_PAD * 2 + 1;
 }
 
+#ifdef PBL_ROUND
+// Round screens: how far a list row's content must stay in from each side so it fits inside the
+// circle at the row's current place on screen (rows near the top and bottom are narrower).
+int ui_row_inset(MenuLayer *m, const Layer *cell) {
+  GRect f = layer_get_frame(cell);
+  int top = f.origin.y + scroll_layer_get_content_offset(menu_layer_get_scroll_layer(m)).y +
+            layer_get_frame(menu_layer_get_layer(m)).origin.y;
+  int r = PBL_DISPLAY_WIDTH / 2, cy = PBL_DISPLAY_HEIGHT / 2;
+  int mid = top + f.size.h / 2 - cy, a = mid - 12, b = mid + 12;   // the icon and text band
+  if (a < 0) a = -a;
+  if (b < 0) b = -b;
+  int dy = a > b ? a : b;
+  if (dy >= r - 8) dy = r - 8;
+  return r - isqrt(r * r - dy * dy) + 6;
+}
+#endif
+
 void ui_draw_separator(GContext *ctx, const Layer *cell, MenuIndex *index, void *cb) {
   GRect b = layer_get_bounds(cell);
   ui_fill_rect(ctx, C_BG, b, 0);

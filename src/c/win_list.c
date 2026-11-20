@@ -29,7 +29,11 @@ typedef struct ListWin {
   ActionMenuLevel *am_root, *am_modes;
   int am_index;
   char mode_sub[MODE_COUNT + 1][36];   // travel-time lines for the mode pickers
+  AppTimer *sw_timer;   // a switch sliding to its new side
+  int sw_row, sw_t;     // which row, and how far along (0..SW_STEPS)
 } ListWin;
+
+#define SW_STEPS 6
 
 static const char *title_for(ListKind k) {
   switch (k) {
@@ -193,17 +197,41 @@ static void mp_toggle(int row) {
   poi_prefs_save();
 }
 
-// A small on/off switch
 static bool mp_disabled(int row) { return row > 0 && !g_app.pois_on; }
 
-static void draw_switch(GContext *ctx, GPoint c, bool on, bool hl, bool dim) {
-  GRect r = GRect(c.x - 12, c.y - 7, 24, 14);
-  GColor blue = dim ? PBL_IF_COLOR_ELSE(GColorDarkGray, C_BLUE) : C_BLUE;
-  GColor track = on ? (hl ? GColorWhite : (dim ? PBL_IF_COLOR_ELSE(C_DIVIDER, C_BLUE) : C_BLUE))
-                    : PBL_IF_COLOR_ELSE(C_DIVIDER, GColorWhite);
-  ui_fill_rect(ctx, track, r, 7);
-  ui_outline_rect(ctx, hl ? GColorWhite : C_DIVIDER, r, 7, 1);
-  ui_fill_circle(ctx, on ? (hl ? blue : GColorWhite) : (hl ? blue : PBL_IF_COLOR_ELSE(dim ? GColorDarkGray : C_TEXT, GColorBlack)), GPoint(on ? r.origin.x + 17 : r.origin.x + 7, c.y), 4);
+// An on/off switch. frac: how far the knob is toward "on" (0..256), so it can slide
+static void draw_switch(GContext *ctx, GPoint c, int frac, bool hl, bool dim) {
+  GRect r = GRect(c.x - 13, c.y - 8, 26, 16);
+  bool on = frac >= 128;
+  GColor ink = hl ? GColorWhite : (dim ? PBL_IF_COLOR_ELSE(C_DIVIDER, C_TEXT) : PBL_IF_COLOR_ELSE(C_BLUE, C_TEXT));
+  GColor row = hl ? (dim ? PBL_IF_COLOR_ELSE(GColorDarkGray, C_BLUE) : C_BLUE) : C_BG;
+#ifdef PBL_COLOR
+  graphics_context_set_antialiased(ctx, true);
+  GColor off_track = hl ? row : C_DIVIDER;
+#else
+  GColor off_track = row;
+#endif
+  ui_fill_rect(ctx, on ? ink : off_track, r, 8);
+  if (!on) ui_outline_rect(ctx, hl ? GColorWhite : PBL_IF_COLOR_ELSE(C_DIVIDER, C_TEXT), r, 8, 1);
+  GPoint k = GPoint(r.origin.x + 8 + 10 * frac / 256, c.y);
+  // the knob: the row's colour on a filled track, white (with an edge) on an empty one
+  GColor knob = on ? row : PBL_IF_COLOR_ELSE(GColorWhite, hl ? GColorWhite : C_TEXT);
+  ui_fill_circle(ctx, knob, k, 6);
+  if (!on && !hl) ui_outline_circle(ctx, PBL_IF_COLOR_ELSE(GColorLightGray, C_TEXT), k, 6, 1);
+}
+
+static void sw_tick(void *ctx) {
+  ListWin *lw = ctx;
+  lw->sw_timer = NULL;
+  if (++lw->sw_t < SW_STEPS) lw->sw_timer = app_timer_register(30, sw_tick, lw);
+  layer_mark_dirty(menu_layer_get_layer(lw->menu));
+}
+
+static void sw_start(ListWin *lw, int row) {
+  lw->sw_row = row;
+  lw->sw_t = 0;
+  if (lw->sw_timer) app_timer_cancel(lw->sw_timer);
+  lw->sw_timer = app_timer_register(30, sw_tick, lw);
 }
 
 static int16_t header_h(MenuLayer *m, uint16_t section, void *ctx) {
@@ -232,14 +260,7 @@ static int16_t cell_h(MenuLayer *m, MenuIndex *i, void *ctx) {
   bool badge;
   row_content(lw, i, &title, &sub, &icon, &icol, &man, &badge);
   GRect mb = layer_get_bounds(menu_layer_get_layer(m));
-#ifdef PBL_ROUND
-  if (!menu_layer_is_index_selected(m, i)) return g_fonts.body_h + 16;
-  int tw = mb.size.w - 36;
-  GSize ts = graphics_text_layout_get_content_size(title, g_fonts.body_b, GRect(0, 0, tw, g_fonts.body_h * 3 + 8),
-                                                   GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter);
-  return 26 + ts.h + (sub ? g_fonts.small_h + 4 : 0) + 8;
-#else
-  int tw = mb.size.w - ((icon || man >= 0) ? 38 : 10);
+  int tw = mb.size.w - ((icon || man >= 0) ? 38 : 10) - PBL_IF_ROUND_ELSE(40, 0);
   if (lw->kind == LW_STEPS) {
     GSize ts = graphics_text_layout_get_content_size(title, g_fonts.body_b, GRect(0, 0, tw, g_fonts.body_h * 4 + 8),
                                                      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft);
@@ -248,7 +269,6 @@ static int16_t cell_h(MenuLayer *m, MenuIndex *i, void *ctx) {
   }
   int h = g_fonts.body_h + (sub ? g_fonts.small_h : 0) + 12;
   return h < 40 ? 40 : h;
-#endif
 }
 
 static void row_content(ListWin *lw, MenuIndex *i, const char **title, const char **sub,
@@ -293,7 +313,7 @@ static void row_content(ListWin *lw, MenuIndex *i, const char **title, const cha
       }
       if (i->row == PL_OPEN) {
         *title = "Open now";
-        *sub = PBL_IF_ROUND_ELSE(g_app.open_now ? "On" : "Off", NULL);
+        *sub = NULL;
         *icon = ICON_CLOCK;
         *icon_color = C_GREEN;
         break;
@@ -325,7 +345,7 @@ static void row_content(ListWin *lw, MenuIndex *i, const char **title, const cha
         *icon_color = map_cat_color(r - MP_FIRST_CAT);
 #endif
       }
-      *sub = PBL_IF_ROUND_ELSE(mp_on(r) ? "On" : "Off", NULL);
+      *sub = NULL;
       break;
     }
     case LW_STEPS:
@@ -381,39 +401,31 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *i, void *cb) {
   GColor bg = hl ? (dim ? PBL_IF_COLOR_ELSE(GColorDarkGray, C_BLUE) : C_BLUE) : C_BG;
   int isz = g_fonts.level >= 1 ? 24 : 20;
 
-#ifdef PBL_ROUND
-  if (!hl) {
-    ui_text_c(ctx, fg, title, g_fonts.body_b, GRect(20, 4, b.size.w - 40, g_fonts.body_h + 6), GTextAlignmentCenter | TXT_ELLIPSIS);
-    return;
-  }
-  int y = 4;
-  if (man >= 0) maneuver_draw(ctx, man, GPoint(b.size.w / 2, y + 11), 22, ic, ic);
-  else if (icon) icon_draw(ctx, icon, GPoint(b.size.w / 2, y + 10), 20, ic, bg);
-  y += 22;
-  graphics_context_set_text_color(ctx, fg);
-  int sub_h = sub ? g_fonts.small_h + 4 : 0;
-  ui_text(ctx, title, g_fonts.body_b, GRect(18, y - 3, b.size.w - 36, b.size.h - y - sub_h), GTextAlignmentCenter | TXT_ELLIPSIS);
-  if (sub) {
-    ui_text_c(ctx, sub_fg, sub, g_fonts.small, GRect(18, b.size.h - sub_h - 6, b.size.w - 36, sub_h), GTextAlignmentCenter | TXT_ELLIPSIS);
-  }
-#else
-  int tx = isz + 14;
+  // highlighted or not, a row keeps the same layout: while a finger drags the list the highlight
+  // stays put in the middle and rows slide through it, drawn half plain and half highlighted
+  int in = PBL_IF_ROUND_ELSE(ui_row_inset(lw->menu, cell), 0);
+  b.size.w -= in;   // right edge
+  int tx = in + isz + 14;
   if (man >= 0) {
-    maneuver_draw(ctx, man, GPoint(tx / 2, b.size.h / 2), isz + 4, ic, hl ? GColorLightGray : C_DIVIDER);
+    maneuver_draw(ctx, man, GPoint(in + (isz + 14) / 2, b.size.h / 2), isz + 4, ic, hl ? GColorLightGray : C_DIVIDER);
   } else if (icon) {
-    icon_draw(ctx, icon, GPoint(tx / 2, b.size.h / 2), isz, ic, bg);
+    icon_draw(ctx, icon, GPoint(in + (isz + 14) / 2, b.size.h / 2), isz, ic, bg);
   } else {
-    tx = 6;
+    tx = in + 6;
   }
   int tw = b.size.w - tx - 4;
   if (lw->kind == LW_STEPS && lw->count && lw->items[i->row].extra) tw -= 12;
   if (lw->kind == LW_MAPPLACES || (lw->kind == LW_CATEGORIES && i->row == PL_OPEN)) {
     bool on = lw->kind == LW_MAPPLACES ? mp_on(i->row) : g_app.open_now;
-    draw_switch(ctx, GPoint(b.size.w - 18, b.size.h / 2), on, hl, dim);
+    int frac = on ? 256 : 0;
+    if (lw->sw_timer && lw->sw_row == i->row) frac = on ? 256 * lw->sw_t / SW_STEPS : 256 - 256 * lw->sw_t / SW_STEPS;
+    draw_switch(ctx, GPoint(b.size.w - 18, b.size.h / 2), frac, hl, dim);
     tw -= 34;
   }
   int sub_h = sub ? g_fonts.small_h : 0;
-  ui_text_c(ctx, fg, title, g_fonts.body_b, GRect(tx, -2, tw - (badge ? 62 : 0), b.size.h - sub_h - 2), GTextAlignmentLeft | TXT_ELLIPSIS);
+  // one line (steps may wrap: their rows are sized to fit)
+  int th = lw->kind == LW_STEPS ? b.size.h - sub_h - 2 : g_fonts.body_h + 6;
+  ui_text_c(ctx, fg, title, g_fonts.body_b, GRect(tx, sub ? -2 : (b.size.h - g_fonts.body_h * 3 / 2) / 2 - 1, tw - (badge ? 62 : 0), th), GTextAlignmentLeft | TXT_ELLIPSIS);
   if (sub) {
     ui_text_c(ctx, sub_fg, sub, g_fonts.small, GRect(tx, b.size.h - sub_h - 6, tw, sub_h + 4), GTextAlignmentLeft | TXT_ELLIPSIS);
   }
@@ -425,7 +437,6 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *i, void *cb) {
     ui_fill_rect(ctx, hl ? GColorWhite : C_BLUE, br, 9);
     ui_text_c(ctx, hl ? C_BLUE : GColorWhite, "Default", g_fonts.chip, GRect(br.origin.x, br.origin.y - 2, br.size.w, 18), GTextAlignmentCenter);
   }
-#endif
   // transit steps: Select shows the schedule
   if (lw->kind == LW_STEPS && lw->count && lw->items[i->row].extra) draw_info_tab(ctx, b, hl);
 }
@@ -488,6 +499,7 @@ static void select_cb(MenuLayer *m, MenuIndex *i, void *ctx) {
     case LW_MAPPLACES:
       if (mp_disabled(i->row)) break;   // greyed out while places are off
       mp_toggle(i->row);
+      sw_start(lw, i->row);
       list_reload(lw);
       break;
     case LW_CATEGORIES:
@@ -495,6 +507,7 @@ static void select_cb(MenuLayer *m, MenuIndex *i, void *ctx) {
       else if (i->row == PL_OPEN) {
         g_app.open_now = !g_app.open_now;
         poi_prefs_save();
+        sw_start(lw, i->row);
         list_reload(lw);
       } else results_window_push_nearby(i->row - PL_FIRST_CAT);
       break;
@@ -602,6 +615,7 @@ static void window_disappear(Window *window) {
 
 static void window_unload(Window *window) {
   ListWin *lw = window_get_user_data(window);
+  if (lw->sw_timer) app_timer_cancel(lw->sw_timer);
   menu_layer_destroy(lw->menu);
   if (lw->status) status_bar_layer_destroy(lw->status);
   if (lw->header) layer_destroy(lw->header);

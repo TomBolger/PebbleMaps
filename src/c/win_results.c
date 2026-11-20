@@ -141,25 +141,19 @@ static void canvas_update(Layer *layer, GContext *ctx) {
 // --- List mode -------------------------------------------------------------
 static uint16_t menu_rows(MenuLayer *m, uint16_t s, void *ctx) { return s_count; }
 static int16_t menu_cell_h(MenuLayer *m, MenuIndex *i, void *ctx) {
-#ifdef PBL_ROUND
-  return menu_layer_is_index_selected(m, i) ? g_fonts.body_h + g_fonts.small_h * 2 + 12 : g_fonts.body_h + 14;
-#else
-  return g_fonts.body_h + g_fonts.small_h + 10;
-#endif
+  // every row the same height, selected or not, so dragging the list never reflows it
+  return g_fonts.body_h + g_fonts.small_h + PBL_IF_ROUND_ELSE(14, 10);
 }
 static void menu_draw_row(GContext *ctx, const Layer *cell, MenuIndex *i, void *cb) {
   ListItem *item = &s_items[i->row];
   GRect b = layer_get_bounds(cell);
   bool hl = menu_cell_layer_is_highlighted(cell);
-  graphics_context_set_text_color(ctx, hl ? GColorWhite : C_TEXT);
-#ifdef PBL_ROUND
-  ui_text(ctx, item->title, g_fonts.body_b, GRect(18, 2, b.size.w - 36, g_fonts.body_h + 6), GTextAlignmentCenter | TXT_ELLIPSIS);
-  if (hl) ui_text(ctx, item->sub, g_fonts.small, GRect(18, g_fonts.body_h + 2, b.size.w - 36, g_fonts.small_h * 2 + 4), GTextAlignmentCenter | TXT_ELLIPSIS);
-#else
-  icon_draw(ctx, ICON_PIN, GPoint(14, b.size.h / 2), 18, hl ? GColorWhite : C_PIN, hl ? C_BLUE : C_BG);
-  ui_text(ctx, item->title, g_fonts.body_b, GRect(28, -2, b.size.w - 32, g_fonts.body_h + 6), GTextAlignmentLeft | TXT_ELLIPSIS);
-  ui_text(ctx, item->sub, g_fonts.small, GRect(28, g_fonts.body_h, b.size.w - 32, g_fonts.small_h + 4), GTextAlignmentLeft | TXT_ELLIPSIS);
-#endif
+  // round: kept inside the circle at the row's place on screen; same layout highlighted or not
+  int in = PBL_IF_ROUND_ELSE(ui_row_inset(s_menu, cell), 0), top = PBL_IF_ROUND_ELSE(2, 0);
+  icon_draw(ctx, ICON_PIN, GPoint(in + 14, b.size.h / 2), 18, hl ? GColorWhite : C_PIN, hl ? C_BLUE : C_BG);
+  int w = b.size.w - in * 2 - 32;
+  ui_text_c(ctx, hl ? GColorWhite : C_TEXT, item->title, g_fonts.body_b, GRect(in + 28, top - 2, w, g_fonts.body_h + 6), GTextAlignmentLeft | TXT_ELLIPSIS);
+  ui_text_c(ctx, hl ? GColorWhite : C_SUBTEXT, item->sub, g_fonts.small, GRect(in + 28, top + g_fonts.body_h, w, g_fonts.small_h + 4), GTextAlignmentLeft | TXT_ELLIPSIS);
 }
 static void menu_select(MenuLayer *m, MenuIndex *i, void *ctx) {
   s_sel = i->row;
