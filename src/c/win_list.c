@@ -563,8 +563,7 @@ static void window_load(Window *window) {
   top += HEADER_H;
 #endif
   top += PBL_IF_ROUND_ELSE(0, 4);   // breathing room under the title bar
-  lw->menu = menu_layer_create(GRect(0, top, b.size.w, b.size.h - top));
-  menu_layer_set_callbacks(lw->menu, lw, (MenuLayerCallbacks){
+  static const MenuLayerCallbacks cb = {
     .get_num_sections = num_sections,
     .get_num_rows = num_rows,
     .get_header_height = header_h,
@@ -576,11 +575,8 @@ static void window_load(Window *window) {
     .select_click = select_cb,
     .select_long_click = select_long_cb,
     .selection_changed = selection_changed,
-  });
-  menu_layer_set_normal_colors(lw->menu, C_BG, C_TEXT);
-  menu_layer_set_highlight_colors(lw->menu, C_BLUE, GColorWhite);
-  menu_layer_set_click_config_onto_window(lw->menu, window);
-  layer_add_child(root, menu_layer_get_layer(lw->menu));
+  };
+  lw->menu = ui_menu_add(window, GRect(0, top, b.size.w, b.size.h - top), lw, &cb);
   lw->dots = dots_layer_create(root, GRect(0, b.size.h / 2 - 10, b.size.w, 30));
 
   if (lw->kind == LW_MODES || lw->kind == LW_SETMODE) {

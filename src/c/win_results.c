@@ -175,16 +175,12 @@ static void list_load(Window *w) {
   lb.origin.y += 4;
   lb.size.h -= 4;
 #endif
-  s_menu = menu_layer_create(lb);
-  menu_layer_set_callbacks(s_menu, NULL, (MenuLayerCallbacks){
+  static const MenuLayerCallbacks cb = {
     .get_num_rows = menu_rows, .get_cell_height = menu_cell_h,
     .draw_row = menu_draw_row,
     .get_separator_height = ui_separator_h, .draw_separator = ui_draw_separator, .select_click = menu_select,
-  });
-  menu_layer_set_normal_colors(s_menu, C_BG, C_TEXT);
-  menu_layer_set_highlight_colors(s_menu, C_BLUE, GColorWhite);
-  menu_layer_set_click_config_onto_window(s_menu, w);
-  layer_add_child(root, menu_layer_get_layer(s_menu));
+  };
+  s_menu = ui_menu_add(w, lb, NULL, &cb);
   menu_layer_set_selected_index(s_menu, MenuIndex(0, s_sel), MenuRowAlignCenter, false);
 }
 

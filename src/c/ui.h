@@ -138,6 +138,9 @@ void draw_action_strip(GContext *ctx, GRect bounds, const StripIcons *icons);
 // Finish setting up one of the app's windows and push it (animated)
 void ui_window_push(Window *w, GColor bg, ClickConfigProvider cc, const WindowHandlers *h);
 
+// A list (MenuLayer) filling `frame` of the window, in the app's colours, wired to the buttons
+MenuLayer *ui_menu_add(Window *w, GRect frame, void *ctx, const MenuLayerCallbacks *cb);
+
 // Toast banner (one at a time, attached to a window)
 void ui_toast(Window *window, const char *text);
 void ui_toast_cancel(void);

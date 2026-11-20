@@ -117,6 +117,16 @@ void ui_window_push(Window *w, GColor bg, ClickConfigProvider cc, const WindowHa
   window_stack_push(w, true);
 }
 
+MenuLayer *ui_menu_add(Window *w, GRect frame, void *ctx, const MenuLayerCallbacks *cb) {
+  MenuLayer *m = menu_layer_create(frame);
+  menu_layer_set_callbacks(m, ctx, *cb);
+  menu_layer_set_normal_colors(m, C_BG, C_TEXT);
+  menu_layer_set_highlight_colors(m, C_BLUE, GColorWhite);
+  menu_layer_set_click_config_onto_window(m, w);
+  layer_add_child(window_get_root_layer(w), menu_layer_get_layer(m));
+  return m;
+}
+
 void ui_text_c(GContext *ctx, GColor color, const char *text, GFont font, GRect box, int align) {
   graphics_context_set_text_color(ctx, color);
   ui_text(ctx, text, font, box, align);
