@@ -431,8 +431,7 @@ static void draw_key_preview(GContext *ctx, GRect b, GRect kr, KeyHit key) {
   ui_fill_rect(ctx, GColorWhite, head, 6);
   gpath_draw_filled(ctx, &tail);
   ui_fill_rect(ctx, C_BLUE, GRect(head.origin.x + 6, head.origin.y + head.size.h - 5, head.size.w - 12, 2), 0);
-  graphics_context_set_text_color(ctx, GColorBlack);
-  ui_text(ctx, label, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD),
+  ui_text_c(ctx, GColorBlack, label, fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD),
                      GRect(head.origin.x, head.origin.y + 1, head.size.w, head.size.h - 6), GTextAlignmentCenter);
 }
 
@@ -450,10 +449,8 @@ static void draw_suggestions(GContext *ctx, GRect b) {
     }
     int pad = 6, tx = r.origin.x + pad + 16;
     icon_draw(ctx, ICON_PIN, GPoint(r.origin.x + pad + 6, r.origin.y + r.size.h / 2), 14, hl ? GColorWhite : C_PIN, hl ? C_BLUE : C_BG);
-    graphics_context_set_text_color(ctx, hl ? GColorWhite : C_TEXT);
-    ui_text(ctx, s_sugg[i].title, tf, GRect(tx, r.origin.y - 1, r.origin.x + r.size.w - tx - pad, 22), GTextAlignmentLeft | TXT_ELLIPSIS);
-    graphics_context_set_text_color(ctx, hl ? GColorWhite : C_HINT);
-    ui_text(ctx, s_sugg[i].sub, sf, GRect(tx, r.origin.y + 17, r.origin.x + r.size.w - tx - pad, 18), GTextAlignmentLeft | TXT_ELLIPSIS);
+    ui_text_c(ctx, hl ? GColorWhite : C_TEXT, s_sugg[i].title, tf, GRect(tx, r.origin.y - 1, r.origin.x + r.size.w - tx - pad, 22), GTextAlignmentLeft | TXT_ELLIPSIS);
+    ui_text_c(ctx, hl ? GColorWhite : C_HINT, s_sugg[i].sub, sf, GRect(tx, r.origin.y + 17, r.origin.x + r.size.w - tx - pad, 18), GTextAlignmentLeft | TXT_ELLIPSIS);
     if (i < n - 1) {
       graphics_context_set_stroke_color(ctx, C_DIVIDER);
       graphics_draw_line(ctx, GPoint(tx, r.origin.y + r.size.h - 1), GPoint(r.origin.x + r.size.w - pad, r.origin.y + r.size.h - 1));
@@ -475,13 +472,11 @@ static void draw_bar(GContext *ctx, GRect b) {
     const char *shown = s_text;   // keep the end (where you type) visible
     while (*shown && graphics_text_layout_get_content_size(shown, tf, GRect(0, 0, 1000, 40),
            GTextOverflowModeFill, GTextAlignmentLeft).w > tr.size.w - 4) shown++;
-    graphics_context_set_text_color(ctx, C_TEXT);
-    ui_text(ctx, shown, tf, tr, GTextAlignmentLeft);
+    ui_text_c(ctx, C_TEXT, shown, tf, tr, GTextAlignmentLeft);
     GSize ts = graphics_text_layout_get_content_size(shown, tf, tr, GTextOverflowModeFill, GTextAlignmentLeft);
     ui_fill_rect(ctx, C_BLUE, GRect(tr.origin.x + ts.w + 1, br.origin.y + 5, 2, br.size.h - 10), 0);
   } else {
-    graphics_context_set_text_color(ctx, C_HINT);
-    ui_text(ctx, s_placeholder, g_fonts.small, tr, GTextAlignmentLeft | TXT_ELLIPSIS);
+    ui_text_c(ctx, C_HINT, s_placeholder, g_fonts.small, tr, GTextAlignmentLeft | TXT_ELLIPSIS);
   }
 }
 

@@ -252,8 +252,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
     sbx.size.w -= 28;
 #endif
     draw_card(ctx, sbx, 6);
-    graphics_context_set_text_color(ctx, C_TEXT);
-    ui_text(ctx, s_status, g_fonts.small_b, GRect(sbx.origin.x + 2, sbx.origin.y + 1, sbx.size.w - 4, sh), GTextAlignmentCenter | TXT_ELLIPSIS);
+    ui_text_c(ctx, C_TEXT, s_status, g_fonts.small_b, GRect(sbx.origin.x + 2, sbx.origin.y + 1, sbx.size.w - 4, sh), GTextAlignmentCenter | TXT_ELLIPSIS);
   }
 
   GRect sb = GRect(0, 0, b.size.w + s_off, b.size.h);   // where the strip is drawn: slid right by s_off

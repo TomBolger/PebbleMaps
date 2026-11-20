@@ -73,8 +73,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   GTextAlignment al = PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentLeft);
   int x = pad, tw = w - pad - 2, y = card.origin.y;
   if (s_failed) {
-    graphics_context_set_text_color(ctx, C_RED);
-    ui_text(ctx, s_via[0] ? s_via : "No route found", g_fonts.small_b, GRect(x, y + 2, tw, ch - 4), al | TXT_ELLIPSIS);
+    ui_text_c(ctx, C_RED, s_via[0] ? s_via : "No route found", g_fonts.small_b, GRect(x, y + 2, tw, ch - 4), al | TXT_ELLIPSIS);
   } else if (s_loaded) {
     GColor dc = s_traffic == 2 ? C_RED : (s_traffic == 1 ? PBL_IF_COLOR_ELSE(GColorOrange, GColorBlack) : C_GREEN_T);
     if (s_mode != MODE_DRIVE) dc = C_BLUE;
@@ -102,8 +101,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
       char clk[16], arr[32];
       format_clock(s_arrive, clk, sizeof(clk));
       snprintf(arr, sizeof(arr), "Arrive %s", clk);
-      graphics_context_set_text_color(ctx, C_TEXT);
-      ui_text(ctx, arr, g_fonts.small_b, GRect(x, y - 3, tw, g_fonts.small_h + 4), al);
+      ui_text_c(ctx, C_TEXT, arr, g_fonts.small_b, GRect(x, y - 3, tw, g_fonts.small_h + 4), al);
     }
   }
   if (s_bar.open) {
@@ -120,8 +118,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   GRect chip = GRect(PBL_IF_ROUND_ELSE(w / 2 - 34, 4), PBL_IF_ROUND_ELSE(12, 4), 68, 20);
   draw_card(ctx, chip, 10);
   icon_draw(ctx, icon_for_mode(s_mode), GPoint(chip.origin.x + 12, chip.origin.y + 10), 13, C_BLUE, C_BG);
-  graphics_context_set_text_color(ctx, C_TEXT);
-  ui_text(ctx, mode_name(s_mode), g_fonts.chip, GRect(chip.origin.x + 21, chip.origin.y + 1, 46, 16), GTextAlignmentLeft);
+  ui_text_c(ctx, C_TEXT, mode_name(s_mode), g_fonts.chip, GRect(chip.origin.x + 21, chip.origin.y + 1, 46, 16), GTextAlignmentLeft);
 }
 
 static void bar_cb(MapBarEvent ev, void *ctx) {

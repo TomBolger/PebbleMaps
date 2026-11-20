@@ -195,8 +195,7 @@ static void draw_banner(GContext *ctx, GRect b, int bh) {
     graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(C_NAVGREEN_DK, GColorBlack));
     GRect r = GRect(PBL_IF_ROUND_ELSE(b.size.w / 2 - 34, 0), bh, 68, th);
     graphics_fill_rect(ctx, r, 4, GCornersBottom);
-    graphics_context_set_text_color(ctx, GColorWhite);
-    ui_text(ctx, "Then", g_fonts.chip, GRect(r.origin.x + 6, bh - 1, 34, 16), GTextAlignmentLeft);
+    ui_text_c(ctx, GColorWhite, "Then", g_fonts.chip, GRect(r.origin.x + 6, bh - 1, 34, 16), GTextAlignmentLeft);
     maneuver_draw(ctx, s_next_man, GPoint(r.origin.x + 52, bh + th / 2), 15, GColorWhite, GColorWhite);
   }
 }
@@ -210,13 +209,11 @@ static void draw_bottom(GContext *ctx, GRect b) {
   char clk[16] = "";
   if (s_arrive) format_clock(s_arrive, clk, sizeof(clk));
 #ifdef PBL_ROUND
-  graphics_context_set_text_color(ctx, C_GREEN_T);
-  ui_text(ctx, s_remain, g_fonts.small_b, GRect(24, r.origin.y + 1, b.size.w - 48, g_fonts.small_h + 4), GTextAlignmentCenter | TXT_ELLIPSIS);
+  ui_text_c(ctx, C_GREEN_T, s_remain, g_fonts.small_b, GRect(24, r.origin.y + 1, b.size.w - 48, g_fonts.small_h + 4), GTextAlignmentCenter | TXT_ELLIPSIS);
   if (clk[0]) {
     char arr[32];
     snprintf(arr, sizeof(arr), "Arrive %s", clk);
-    graphics_context_set_text_color(ctx, C_SUBTEXT);
-    ui_text(ctx, arr, g_fonts.small, GRect(34, r.origin.y + g_fonts.small_h, b.size.w - 68, g_fonts.small_h + 4), GTextAlignmentCenter | TXT_ELLIPSIS);
+    ui_text_c(ctx, C_SUBTEXT, arr, g_fonts.small, GRect(34, r.origin.y + g_fonts.small_h, b.size.w - 68, g_fonts.small_h + 4), GTextAlignmentCenter | TXT_ELLIPSIS);
   }
 #else
   int rw = b.size.w - ((s_bar.open || s_menu_open) ? STRIP_W : 0);
@@ -233,8 +230,7 @@ static void draw_bottom(GContext *ctx, GRect b) {
   ui_text(ctx, t, g_fonts.title, GRect(5, r.origin.y + (h - g_fonts.title_h) / 2 - 5, ts.w + 2, h), GTextAlignmentLeft);
   char right[48];
   snprintf(right, sizeof(right), "%s%s%s", dist, (dist[0] && clk[0]) ? " · " : "", clk);
-  graphics_context_set_text_color(ctx, C_SUBTEXT);
-  ui_text(ctx, right, g_fonts.small_b,
+  ui_text_c(ctx, C_SUBTEXT, right, g_fonts.small_b,
                      GRect(ts.w + 9, r.origin.y + (h - g_fonts.small_h) / 2 - 3, rw - ts.w - 12, g_fonts.small_h + 4), GTextAlignmentRight | TXT_ELLIPSIS);
 #endif
 }
@@ -242,8 +238,7 @@ static void draw_bottom(GContext *ctx, GRect b) {
 static void draw_arrived(GContext *ctx, GRect b) {
   ui_fill_rect(ctx, C_NAVGREEN, b, 0);
   icon_draw(ctx, ICON_FLAG, GPoint(b.size.w / 2, b.size.h / 2 - 34), 40, GColorWhite, C_NAVGREEN);
-  graphics_context_set_text_color(ctx, GColorWhite);
-  ui_text(ctx, "You've arrived", g_fonts.title, GRect(4, b.size.h / 2 - 8, b.size.w - 8, 34), GTextAlignmentCenter);
+  ui_text_c(ctx, GColorWhite, "You've arrived", g_fonts.title, GRect(4, b.size.h / 2 - 8, b.size.w - 8, 34), GTextAlignmentCenter);
   ui_text(ctx, s_instr, g_fonts.body, GRect(PBL_IF_ROUND_ELSE(20, 6), b.size.h / 2 + 24,
                      b.size.w - PBL_IF_ROUND_ELSE(40, 12), g_fonts.body_h * 2 + 8), GTextAlignmentCenter | TXT_ELLIPSIS);
 }

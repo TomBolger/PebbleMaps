@@ -217,8 +217,7 @@ static int16_t header_h(MenuLayer *m, uint16_t section, void *ctx) {
 static void draw_header(GContext *ctx, const Layer *cell, uint16_t section, void *cb) {
   GRect b = layer_get_bounds(cell);
   ui_fill_rect(ctx, PBL_IF_COLOR_ELSE(C_DIVIDER, GColorWhite), b, 0);
-  graphics_context_set_text_color(ctx, C_TEXT);
-  ui_text(ctx, section == 0 ? "SAVED" : "RECENT", g_fonts.chip,
+  ui_text_c(ctx, C_TEXT, section == 0 ? "SAVED" : "RECENT", g_fonts.chip,
                      GRect(PBL_IF_ROUND_ELSE(0, 6), -2, b.size.w - PBL_IF_ROUND_ELSE(0, 6), 16), PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentLeft));
 }
 
@@ -385,8 +384,7 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *i, void *cb) {
 
 #ifdef PBL_ROUND
   if (!hl) {
-    graphics_context_set_text_color(ctx, fg);
-    ui_text(ctx, title, g_fonts.body_b, GRect(20, 4, b.size.w - 40, g_fonts.body_h + 6), GTextAlignmentCenter | TXT_ELLIPSIS);
+    ui_text_c(ctx, fg, title, g_fonts.body_b, GRect(20, 4, b.size.w - 40, g_fonts.body_h + 6), GTextAlignmentCenter | TXT_ELLIPSIS);
     return;
   }
   int y = 4;
@@ -397,8 +395,7 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *i, void *cb) {
   int sub_h = sub ? g_fonts.small_h + 4 : 0;
   ui_text(ctx, title, g_fonts.body_b, GRect(18, y - 3, b.size.w - 36, b.size.h - y - sub_h), GTextAlignmentCenter | TXT_ELLIPSIS);
   if (sub) {
-    graphics_context_set_text_color(ctx, sub_fg);
-    ui_text(ctx, sub, g_fonts.small, GRect(18, b.size.h - sub_h - 6, b.size.w - 36, sub_h), GTextAlignmentCenter | TXT_ELLIPSIS);
+    ui_text_c(ctx, sub_fg, sub, g_fonts.small, GRect(18, b.size.h - sub_h - 6, b.size.w - 36, sub_h), GTextAlignmentCenter | TXT_ELLIPSIS);
   }
 #else
   int tx = isz + 14;
@@ -417,11 +414,9 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *i, void *cb) {
     tw -= 34;
   }
   int sub_h = sub ? g_fonts.small_h : 0;
-  graphics_context_set_text_color(ctx, fg);
-  ui_text(ctx, title, g_fonts.body_b, GRect(tx, -2, tw - (badge ? 62 : 0), b.size.h - sub_h - 2), GTextAlignmentLeft | TXT_ELLIPSIS);
+  ui_text_c(ctx, fg, title, g_fonts.body_b, GRect(tx, -2, tw - (badge ? 62 : 0), b.size.h - sub_h - 2), GTextAlignmentLeft | TXT_ELLIPSIS);
   if (sub) {
-    graphics_context_set_text_color(ctx, sub_fg);
-    ui_text(ctx, sub, g_fonts.small, GRect(tx, b.size.h - sub_h - 6, tw, sub_h + 4), GTextAlignmentLeft | TXT_ELLIPSIS);
+    ui_text_c(ctx, sub_fg, sub, g_fonts.small, GRect(tx, b.size.h - sub_h - 6, tw, sub_h + 4), GTextAlignmentLeft | TXT_ELLIPSIS);
   }
   if (badge) {
     // pill a little roomier than the word, so the rounded corners never clip it
@@ -429,8 +424,7 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *i, void *cb) {
                                                    GTextOverflowModeFill, GTextAlignmentLeft).w + 14;
     GRect br = GRect(b.size.w - bw - 4, 4, bw, 18);
     ui_fill_rect(ctx, hl ? GColorWhite : C_BLUE, br, 9);
-    graphics_context_set_text_color(ctx, hl ? C_BLUE : GColorWhite);
-    ui_text(ctx, "Default", g_fonts.chip, GRect(br.origin.x, br.origin.y - 2, br.size.w, 18), GTextAlignmentCenter);
+    ui_text_c(ctx, hl ? C_BLUE : GColorWhite, "Default", g_fonts.chip, GRect(br.origin.x, br.origin.y - 2, br.size.w, 18), GTextAlignmentCenter);
   }
 #endif
   // transit steps: Select shows the schedule
@@ -547,8 +541,7 @@ static void header_update(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
   ui_fill_rect(ctx, header_color(lw->kind), b, 0);
   GColor tc = (lw->kind == LW_FAVS) ? PBL_IF_COLOR_ELSE(GColorBlack, GColorWhite) : GColorWhite;
-  graphics_context_set_text_color(ctx, tc);
-  ui_text(ctx, title_for(lw->kind), g_fonts.body_b, GRect(0, -3, b.size.w, g_fonts.body_h + 6), GTextAlignmentCenter | TXT_ELLIPSIS);
+  ui_text_c(ctx, tc, title_for(lw->kind), g_fonts.body_b, GRect(0, -3, b.size.w, g_fonts.body_h + 6), GTextAlignmentCenter | TXT_ELLIPSIS);
   // empty-favorites hint lives below the menu rows
 }
 

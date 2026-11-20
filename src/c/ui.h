@@ -145,6 +145,9 @@ void ui_fill_circle(GContext *ctx, GColor color, GPoint center, int radius);
 #define TXT_ELLIPSIS 4
 void ui_text(GContext *ctx, const char *text, GFont font, GRect box, int align);
 
+// Same, in a given text colour
+void ui_text_c(GContext *ctx, GColor color, const char *text, GFont font, GRect box, int align);
+
 // Format a unix time as local clock text ("2:43 PM" or "14:43")
 void format_clock(time_t t, char *buf, size_t len);
 

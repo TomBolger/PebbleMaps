@@ -112,14 +112,18 @@ static void rect(GContext *ctx, int x1, int y1, int x2, int y2, int radius) {
 static void text_glyph(GContext *ctx, const char *t, GColor fg) {
   GFont f = F(s_sz >= 28 ? FONT_KEY_GOTHIC_28_BOLD : (s_sz >= 20 ? FONT_KEY_GOTHIC_24_BOLD : FONT_KEY_GOTHIC_18_BOLD));
   int h = s_sz >= 28 ? 28 : (s_sz >= 20 ? 24 : 18);
-  graphics_context_set_text_color(ctx, fg);
-  ui_text(ctx, t, f, GRect(s_c.x - s_sz / 2 - 4, s_c.y - h / 2 - h / 5, s_sz + 8, h + 4), GTextAlignmentCenter);
+  ui_text_c(ctx, fg, t, f, GRect(s_c.x - s_sz / 2 - 4, s_c.y - h / 2 - h / 5, s_sz + 8, h + 4), GTextAlignmentCenter);
 }
 
 void ui_text(GContext *ctx, const char *text, GFont font, GRect box, int align) {
   graphics_draw_text(ctx, text, font, box,
                      (align & TXT_ELLIPSIS) ? GTextOverflowModeTrailingEllipsis : GTextOverflowModeFill,
                      (GTextAlignment)(align & 3), NULL);
+}
+
+void ui_text_c(GContext *ctx, GColor color, const char *text, GFont font, GRect box, int align) {
+  graphics_context_set_text_color(ctx, color);
+  ui_text(ctx, text, font, box, align);
 }
 
 void ui_fill_rect(GContext *ctx, GColor color, GRect box, int radius) {

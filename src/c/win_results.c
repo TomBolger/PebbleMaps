@@ -102,18 +102,15 @@ static void draw_card_content(GContext *ctx, GRect card) {
   int pad = PBL_IF_ROUND_ELSE(26, 6);
   GTextAlignment al = PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentLeft);
   GRect tr = GRect(card.origin.x + pad, card.origin.y - 2, card.size.w - pad * 2, g_fonts.body_h + 6);
-  graphics_context_set_text_color(ctx, C_TEXT);
-  ui_text(ctx, item->title, g_fonts.body_b, tr, al | TXT_ELLIPSIS);
+  ui_text_c(ctx, C_TEXT, item->title, g_fonts.body_b, tr, al | TXT_ELLIPSIS);
   GRect sr = GRect(tr.origin.x, card.origin.y + g_fonts.body_h, tr.size.w, g_fonts.small_h * 2 + 4);
-  graphics_context_set_text_color(ctx, C_SUBTEXT);
-  ui_text(ctx, item->sub, g_fonts.small, sr, al | TXT_ELLIPSIS);
+  ui_text_c(ctx, C_SUBTEXT, item->sub, g_fonts.small, sr, al | TXT_ELLIPSIS);
 #ifndef PBL_ROUND
   char cnt[16];
   snprintf(cnt, sizeof(cnt), "%d/%d", s_sel + 1, s_count);
   GRect cr = GRect(card.origin.x + card.size.w - 34, card.origin.y - 20, 30, 16);
   ui_fill_rect(ctx, C_BLUE, cr, 8);
-  graphics_context_set_text_color(ctx, GColorWhite);
-  ui_text(ctx, cnt, g_fonts.chip, GRect(cr.origin.x, cr.origin.y - 2, cr.size.w, 16), GTextAlignmentCenter);
+  ui_text_c(ctx, GColorWhite, cnt, g_fonts.chip, GRect(cr.origin.x, cr.origin.y - 2, cr.size.w, 16), GTextAlignmentCenter);
 #endif
 }
 
@@ -124,8 +121,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   GRect top = GRect(PBL_IF_ROUND_ELSE(40, 4), PBL_IF_ROUND_ELSE(10, 4),
                     b.size.w - PBL_IF_ROUND_ELSE(80, 8) - (s_bar.open ? PBL_IF_ROUND_ELSE(0, STRIP_W) : 0), 20);
   draw_card(ctx, top, 10);
-  graphics_context_set_text_color(ctx, C_TEXT);
-  ui_text(ctx, s_title, g_fonts.chip, GRect(top.origin.x + 6, top.origin.y + 1, top.size.w - 12, 18), GTextAlignmentCenter | TXT_ELLIPSIS);
+  ui_text_c(ctx, C_TEXT, s_title, g_fonts.chip, GRect(top.origin.x + 6, top.origin.y + 1, top.size.w - 12, 18), GTextAlignmentCenter | TXT_ELLIPSIS);
 
   GRect card = card_rect(b);
   if (s_loaded && s_count) {

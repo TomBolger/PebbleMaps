@@ -80,12 +80,10 @@ static void canvas_update(Layer *layer, GContext *ctx) {
     char line[96];
     if (s_type[0] && s_dist[0]) snprintf(line, sizeof(line), "%s · %s", s_type, s_dist);
     else snprintf(line, sizeof(line), "%s%s", s_type, s_dist);
-    graphics_context_set_text_color(ctx, C_ACCENT);
-    ui_text(ctx, line, g_fonts.small_b, GRect(x, y - 2, tw, g_fonts.small_h + 4), al | TXT_ELLIPSIS);
+    ui_text_c(ctx, C_ACCENT, line, g_fonts.small_b, GRect(x, y - 2, tw, g_fonts.small_h + 4), al | TXT_ELLIPSIS);
     y += g_fonts.small_h;
   }
-  graphics_context_set_text_color(ctx, C_SUBTEXT);
-  ui_text(ctx, s_addr, g_fonts.small, GRect(x, y - 2, tw, b.size.h - y), al | TXT_ELLIPSIS);
+  ui_text_c(ctx, C_SUBTEXT, s_addr, g_fonts.small, GRect(x, y - 2, tw, b.size.h - y), al | TXT_ELLIPSIS);
 
   // hint badge: map can be moved (hold Select)
   if (!s_bar.open) {
