@@ -205,6 +205,10 @@ static void window_unload(Window *window) {
   s_window = NULL;
 }
 
+static const WindowHandlers HANDLERS = {
+  .load = window_load, .appear = window_appear, .disappear = window_disappear, .unload = window_unload,
+};
+
 void route_window_push(int mode) {
   if (s_window) window_stack_remove(s_window, false);
   if (heap_bytes_free() < 4000) results_window_close();   // short on memory (Time, Time Round)
@@ -217,11 +221,5 @@ void route_window_push(int mode) {
     s_tx = NULL;
     return;
   }
-  window_set_background_color(s_window, C_BG);
-  window_set_click_config_provider(s_window, click_config);
-  window_set_window_handlers(s_window, (WindowHandlers){
-    .load = window_load, .appear = window_appear,
-    .disappear = window_disappear, .unload = window_unload,
-  });
-  window_stack_push(s_window, true);
+  ui_window_push(s_window, C_BG, click_config, &HANDLERS);
 }

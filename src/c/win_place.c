@@ -209,6 +209,10 @@ void place_window_close(void) {
   if (s_window) window_stack_remove(s_window, false);
 }
 
+static const WindowHandlers HANDLERS = {
+  .load = window_load, .appear = window_appear, .disappear = window_disappear, .unload = window_unload,
+};
+
 static void place_push(int src, int idx, const char *title, int request_id) {
   if (s_window) window_stack_remove(s_window, false);
   s_src = src;
@@ -230,13 +234,7 @@ static void place_push(int src, int idx, const char *title, int request_id) {
     s_tx = NULL;
     return;
   }
-  window_set_background_color(s_window, C_BG);
-  window_set_click_config_provider(s_window, click_config);
-  window_set_window_handlers(s_window, (WindowHandlers){
-    .load = window_load, .appear = window_appear,
-    .disappear = window_disappear, .unload = window_unload,
-  });
-  window_stack_push(s_window, true);
+  ui_window_push(s_window, C_BG, click_config, &HANDLERS);
 }
 
 void place_window_push(int src, int idx, const char *title) { place_push(src, idx, title, 0); }

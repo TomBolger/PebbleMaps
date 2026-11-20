@@ -323,6 +323,10 @@ static void window_unload(Window *window) {
   s_window = NULL;
 }
 
+static const WindowHandlers HANDLERS = {
+  .load = window_load, .appear = window_appear, .disappear = window_disappear, .unload = window_unload,
+};
+
 // Make room for a new results screen (the one showing, if any, goes first); false if there is no memory
 static bool take(void) {
   if (s_window) window_stack_remove(s_window, false);
@@ -342,13 +346,7 @@ static void push(void) {
     s_tx = NULL;
     return;
   }
-  window_set_background_color(s_window, C_MAPBG);
-  window_set_click_config_provider(s_window, results_click_config);
-  window_set_window_handlers(s_window, (WindowHandlers){
-    .load = window_load, .appear = window_appear,
-    .disappear = window_disappear, .unload = window_unload,
-  });
-  window_stack_push(s_window, true);
+  ui_window_push(s_window, C_MAPBG, results_click_config, &HANDLERS);
 }
 
 void results_window_close(void) {

@@ -640,6 +640,10 @@ void list_windows_trim(void) {
   results_window_close();
 }
 
+static const WindowHandlers HANDLERS = {
+  .load = window_load, .appear = window_appear, .disappear = window_disappear, .unload = window_unload,
+};
+
 void list_window_push(ListKind kind, int arg) {
   if (heap_bytes_free() < 4000) list_windows_trim();
   ListWin *lw = calloc(1, sizeof(ListWin));
@@ -660,10 +664,5 @@ void list_window_push(ListKind kind, int arg) {
     return;
   }
   window_set_user_data(lw->window, lw);
-  window_set_background_color(lw->window, C_BG);
-  window_set_window_handlers(lw->window, (WindowHandlers){
-    .load = window_load, .appear = window_appear,
-    .disappear = window_disappear, .unload = window_unload,
-  });
-  window_stack_push(lw->window, true);
+  ui_window_push(lw->window, C_BG, NULL, &HANDLERS);
 }

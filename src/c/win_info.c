@@ -392,6 +392,10 @@ static void window_unload(Window *window) {
   s_window = NULL;
 }
 
+static const WindowHandlers HANDLERS = {
+  .load = window_load, .appear = window_appear, .disappear = window_disappear, .unload = window_unload,
+};
+
 void info_window_push(int src, int idx, const char *title) {
   if (s_window) window_stack_remove(s_window, false);
   // short on memory (Pebble Time, Time Round): drop the lists underneath first
@@ -410,11 +414,6 @@ void info_window_push(int src, int idx, const char *title) {
     return;
   }
   strncpy(s_name, title ? title : "", sizeof(s_name) - 1);
-  window_set_background_color(s_window, C_BG);
-  window_set_window_handlers(s_window, (WindowHandlers){
-    .load = window_load, .appear = window_appear,
-    .disappear = window_disappear, .unload = window_unload,
-  });
-  window_stack_push(s_window, true);
+  ui_window_push(s_window, C_BG, NULL, &HANDLERS);
 }
 #endif  // !PM_LOWMEM

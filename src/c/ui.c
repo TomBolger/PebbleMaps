@@ -121,6 +121,13 @@ void ui_text(GContext *ctx, const char *text, GFont font, GRect box, int align) 
                      (GTextAlignment)(align & 3), NULL);
 }
 
+void ui_window_push(Window *w, GColor bg, ClickConfigProvider cc, const WindowHandlers *h) {
+  window_set_background_color(w, bg);
+  if (cc) window_set_click_config_provider(w, cc);
+  window_set_window_handlers(w, *h);
+  window_stack_push(w, true);
+}
+
 void ui_text_c(GContext *ctx, GColor color, const char *text, GFont font, GRect box, int align) {
   graphics_context_set_text_color(ctx, color);
   ui_text(ctx, text, font, box, align);

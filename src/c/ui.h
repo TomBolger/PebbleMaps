@@ -130,6 +130,9 @@ void draw_side_tab(GContext *ctx, GRect bounds, bool light);   // light: white t
 void draw_info_tab(GContext *ctx, GRect cell, bool hl);
 void draw_action_strip(GContext *ctx, GRect bounds, const StripIcons *icons);
 
+// Finish setting up one of the app's windows and push it (animated)
+void ui_window_push(Window *w, GColor bg, ClickConfigProvider cc, const WindowHandlers *h);
+
 // Toast banner (one at a time, attached to a window)
 void ui_toast(Window *window, const char *text);
 void ui_toast_cancel(void);

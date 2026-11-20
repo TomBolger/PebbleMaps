@@ -562,13 +562,11 @@ static void window_unload(Window *window) {
   s_dictation = NULL;
 }
 
+static const WindowHandlers HANDLERS = {
+  .load = window_load, .appear = window_appear, .disappear = window_disappear, .unload = window_unload,
+};
+
 void home_window_push(void) {
   s_window = window_create();
-  window_set_background_color(s_window, C_MAPBG);
-  window_set_click_config_provider(s_window, click_config);
-  window_set_window_handlers(s_window, (WindowHandlers){
-    .load = window_load, .appear = window_appear,
-    .disappear = window_disappear, .unload = window_unload,
-  });
-  window_stack_push(s_window, true);
+  ui_window_push(s_window, C_MAPBG, click_config, &HANDLERS);
 }

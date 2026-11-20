@@ -133,6 +133,10 @@ static MsgWin *msg_create(IconId icon, const char *title, const char *body) {
   return mw;
 }
 
+static const WindowHandlers HANDLERS = {
+  .load = window_load, .appear = window_appear, .disappear = window_disappear, .unload = window_unload,
+};
+
 static bool msg_show(MsgWin *mw) {
   mw->window = window_create();
   if (!mw->window) {   // out of memory: give up quietly
@@ -141,12 +145,7 @@ static bool msg_show(MsgWin *mw) {
     return false;
   }
   window_set_user_data(mw->window, mw);
-  window_set_background_color(mw->window, C_BG);
-  window_set_window_handlers(mw->window, (WindowHandlers){
-    .load = window_load, .appear = window_appear,
-    .disappear = window_disappear, .unload = window_unload,
-  });
-  window_stack_push(mw->window, true);
+  ui_window_push(mw->window, C_BG, NULL, &HANDLERS);
   return true;
 }
 

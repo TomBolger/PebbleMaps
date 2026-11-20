@@ -569,6 +569,10 @@ static void window_unload(Window *window) {
   s_window = NULL;
 }
 
+static const WindowHandlers HANDLERS = {
+  .load = window_load, .appear = window_appear, .disappear = window_disappear, .unload = window_unload,
+};
+
 void nav_window_push(int mode) {
   if (s_window) window_stack_remove(s_window, false);
   // free memory: only home and the route overview stay underneath
@@ -591,13 +595,7 @@ void nav_window_push(int mode) {
     return;
   }
   strncpy(s_instr, "Starting navigation", sizeof(s_instr) - 1);
-  window_set_background_color(s_window, C_BG);
-  window_set_click_config_provider(s_window, click_config);
-  window_set_window_handlers(s_window, (WindowHandlers){
-    .load = window_load, .appear = window_appear,
-    .disappear = window_disappear, .unload = window_unload,
-  });
-  window_stack_push(s_window, true);
+  ui_window_push(s_window, C_BG, click_config, &HANDLERS);
   GRect b = layer_get_bounds(window_get_root_layer(s_window));
   s_heading_up = persist_exists(PERSIST_HEADING_UP) ? persist_read_bool(PERSIST_HEADING_UP) : true;
   s_map_heading = 0;
