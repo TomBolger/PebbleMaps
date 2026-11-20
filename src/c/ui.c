@@ -759,12 +759,6 @@ static void strip_dots(GContext *ctx, int cx, int y, int page, int pages) {
 }
 
 #ifdef PBL_ROUND
-static int isqrt(int v) {
-  int r = 0;
-  while ((r + 1) * (r + 1) <= v) r++;
-  return r;
-}
-
 // Round screens: the middle of the strip's visible part at height dy from the screen's middle.
 // The strip is a big circle poking in from the right; the screen's own circle cuts its far edge.
 static int strip_cx(GRect bounds, int dy) {
@@ -781,8 +775,21 @@ void draw_action_strip(GContext *ctx, GRect bounds, const StripIcons *ic) {
   int cy = bounds.size.h / 2;
 #ifdef PBL_ROUND
   int R = bounds.size.h;
-  ui_fill_circle(ctx, C_BG, GPoint(bounds.size.w - w + R, cy), R);
-  ui_outline_circle(ctx, C_DIVIDER, GPoint(bounds.size.w - w + R, cy), R, 1);
+  // The strip is the edge of a big circle poking in from the right. The firmware draws circles this big
+  // with gaps, so fill it row by row with a solid 2 px edge (the edge moves in step by step from the middle)
+  {
+    int ccx = bounds.size.w - w + R, half = R, prev = ccx - R;
+    for (int d = 0; d <= cy; d++) {
+      while (half > 0 && half * half + d * d > R * R) half--;
+      int lx = ccx - half;
+      for (int y = cy - d; y <= cy + d; y += d ? 2 * d : 1) {
+        if (y >= bounds.size.h || lx >= PBL_DISPLAY_WIDTH) continue;
+        ui_fill_rect(ctx, C_DIVIDER, GRect(prev - 2, y, lx - prev + 2, 1), 0);
+        ui_fill_rect(ctx, C_BG, GRect(lx, y, PBL_DISPLAY_WIDTH - lx, 1), 0);
+      }
+      prev = lx;
+    }
+  }
   int dy = bounds.size.h / 5;   // top and bottom icons: well inside the circle's edge
   int cx_mid = strip_cx(bounds, 0);
   int cx_out = strip_cx(bounds, dy + isz / 2);   // the icon's far edge is where it is tightest
