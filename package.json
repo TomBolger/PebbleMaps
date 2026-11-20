@@ -16,7 +16,7 @@
   },
   "pebble": {
     "displayName": "Pebble Maps",
-    "uuid": "cce60bc9-e29f-4988-a83b-b4652291650d",
+    "uuid": "57069b7a-2094-4594-9975-e7e2a811f975",
     "sdkVersion": "3",
     "enableMultiJS": true,
     "targetPlatforms": [
