@@ -25,7 +25,9 @@ def configure(ctx):
     # compiler from growing code for speed. (No LTO: the firmware rejects it.)
     size_flags = ['-fno-inline-functions-called-once', '-fno-reorder-blocks',
                   '-fno-partial-inlining', '-fno-tree-loop-optimize',
-                  '-fno-if-conversion', '-fno-schedule-insns2', '-fno-tree-dominator-opts', '-fno-caller-saves', '-fno-ira-hoist-pressure']
+                  '-fno-if-conversion', '-fno-schedule-insns2', '-fno-tree-dominator-opts', '-fno-caller-saves', '-fno-ira-hoist-pressure',
+                  '-fno-optimize-sibling-calls', '-fno-move-loop-invariants', '-fno-tree-loop-im',
+                  '-fno-ipa-modref', '-fno-tree-bit-ccp', '-fno-tree-tail-merge']
     for p in ctx.all_envs:
         ctx.all_envs[p].append_value('CFLAGS', size_flags)
 
