@@ -758,36 +758,54 @@ static void strip_dots(GContext *ctx, int cx, int y, int page, int pages) {
   }
 }
 
+#ifdef PBL_ROUND
+static int isqrt(int v) {
+  int r = 0;
+  while ((r + 1) * (r + 1) <= v) r++;
+  return r;
+}
+
+// Round screens: the middle of the strip's visible part at height dy from the screen's middle.
+// The strip is a big circle poking in from the right; the screen's own circle cuts its far edge.
+static int strip_cx(GRect bounds, int dy) {
+  int W = PBL_DISPLAY_WIDTH, R = bounds.size.h, sr = W / 2;
+  int right = W / 2 + isqrt(sr * sr - dy * dy);
+  int left = W - STRIP_W + R - isqrt(R * R - dy * dy);
+  return (left + right) / 2 + (bounds.size.w - W);   // plus how far the strip has slid out
+}
+#endif
+
 void draw_action_strip(GContext *ctx, GRect bounds, const StripIcons *ic) {
   int w = STRIP_W;
-  int cx;
   int isz = PBL_IF_ROUND_ELSE(20, w >= 36 ? 22 : 19);
+  int cy = bounds.size.h / 2;
 #ifdef PBL_ROUND
   int R = bounds.size.h;
-  ui_fill_circle(ctx, C_BG, GPoint(bounds.size.w - w + R, bounds.size.h / 2), R);
-  ui_outline_circle(ctx, C_DIVIDER, GPoint(bounds.size.w - w + R, bounds.size.h / 2), R, 1);
-  cx = bounds.size.w - w / 2 - 4;
-  int dy = bounds.size.h / 4;
+  ui_fill_circle(ctx, C_BG, GPoint(bounds.size.w - w + R, cy), R);
+  ui_outline_circle(ctx, C_DIVIDER, GPoint(bounds.size.w - w + R, cy), R, 1);
+  int dy = bounds.size.h / 5;   // top and bottom icons: well inside the circle's edge
+  int cx_mid = strip_cx(bounds, 0);
+  int cx_out = strip_cx(bounds, dy + isz / 2);   // the icon's far edge is where it is tightest
+  int cx_up = cx_out, cx_dn = cx_out;
 #else
   GRect strip = GRect(bounds.size.w - w, 0, w, bounds.size.h);
   ui_fill_rect(ctx, C_BG, strip, 0);
   ui_line(ctx, C_DIVIDER, GPoint(strip.origin.x, 0), GPoint(strip.origin.x, bounds.size.h));
-  cx = strip.origin.x + w / 2;
+  int cx_mid = strip.origin.x + w / 2, cx_up = cx_mid, cx_dn = cx_mid;
   int dy = bounds.size.h / 2 - 26;
   if (dy > 70) dy = 70;
 #endif
-  int cy = bounds.size.h / 2;
-  if (ic->up) icon_draw(ctx, ic->up, GPoint(cx, cy - dy), isz, or_default(ic->up_color, C_ICON), C_BG);
+  if (ic->up) icon_draw(ctx, ic->up, GPoint(cx_up, cy - dy), isz, or_default(ic->up_color, C_ICON), C_BG);
   if (ic->select) {
     if (ic->select_plain) {
-      icon_draw(ctx, ic->select, GPoint(cx, cy), isz - 2, C_ICON, C_BG);
+      icon_draw(ctx, ic->select, GPoint(cx_mid, cy), isz - 2, C_ICON, C_BG);
     } else {
-      draw_fab(ctx, GPoint(cx, cy), w >= 36 ? 15 : 12, ic->select, or_default(ic->select_color, C_BLUE));
+      draw_fab(ctx, GPoint(cx_mid, cy), w >= 36 ? 15 : 12, ic->select, or_default(ic->select_color, C_BLUE));
     }
   }
-  if (ic->up_pages > 1) strip_dots(ctx, cx, cy - dy + isz / 2 + 6, ic->up_page, ic->up_pages);
-  if (ic->pages > 1) strip_dots(ctx, cx, cy + 13, ic->page, ic->pages);
-  if (ic->down) icon_draw(ctx, ic->down, GPoint(cx, cy + dy), isz, or_default(ic->down_color, C_ICON), C_BG);
+  if (ic->up_pages > 1) strip_dots(ctx, cx_up, cy - dy + isz / 2 + 6, ic->up_page, ic->up_pages);
+  if (ic->pages > 1) strip_dots(ctx, cx_mid, cy + 13, ic->page, ic->pages);
+  if (ic->down) icon_draw(ctx, ic->down, GPoint(cx_dn, cy + dy), isz, or_default(ic->down_color, C_ICON), C_BG);
 }
 
 void draw_side_tab(GContext *ctx, GRect bounds, bool light) {

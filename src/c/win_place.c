@@ -96,8 +96,8 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   StripIcons ic = { .up = s_fav ? ICON_STAR : ICON_STAR_OUTLINE, .select = ICON_NONE,
                     .down = ICON_INFO, .up_color = s_fav ? C_STAR : C_STAR_EDGE, .down_color = C_BLUE };
   draw_action_strip(ctx, b, &ic);
-  int cx = PBL_IF_ROUND_ELSE(b.size.w - STRIP_W / 2 - 4, b.size.w - STRIP_W / 2);
-  icon_draw(ctx, ICON_DIRECTIONS, GPoint(cx, b.size.h / 2), STRIP_W - 4, C_BLUE, C_BG);
+  int cx = b.size.w - STRIP_W / 2;
+  icon_draw(ctx, ICON_DIRECTIONS, GPoint(cx, b.size.h / 2), STRIP_W - PBL_IF_ROUND_ELSE(10, 4), C_BLUE, C_BG);
 }
 
 static void bar_cb(MapBarEvent ev, void *ctx) {

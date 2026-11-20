@@ -119,7 +119,7 @@ void dots_layer_destroy(Layer *layer);
 #if defined(PBL_PLATFORM_EMERY)
 #define STRIP_W 36
 #else
-#define STRIP_W PBL_IF_ROUND_ELSE(40, 30)
+#define STRIP_W PBL_IF_ROUND_ELSE(44, 30)
 #endif
 typedef struct {
   IconId up, select, down;
