@@ -284,11 +284,8 @@ static void window_load(Window *window) {
   Layer *root = window_get_root_layer(window);
   GRect b = layer_get_bounds(root);
   s_items = NULL;
-  s_canvas = layer_create(b);
-  layer_set_update_proc(s_canvas, canvas_update);
-  layer_add_child(root, s_canvas);
-  s_dots = dots_layer_create(GRect(0, b.size.h / 2 - 30, b.size.w, 30));
-  layer_add_child(root, s_dots);
+  s_canvas = ui_layer_add(root, b, canvas_update);
+  s_dots = dots_layer_create(root, GRect(0, b.size.h / 2 - 30, b.size.w, 30));
   mapbar_init(&s_bar, s_canvas, GSize(b.size.w, b.size.h - card_h()), ICON_LIST, ICON_EXPLORE, bar_cb, NULL);
   s_bar.extra_up_color = C_BLUE;
   s_bar.extra_down_color = C_PIN;

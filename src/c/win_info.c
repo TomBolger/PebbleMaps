@@ -343,8 +343,7 @@ static void window_load(Window *window) {
   layer_set_update_proc(s_content, content_update);
   scroll_layer_add_child(s_scroll, s_content);
   layer_add_child(root, scroll_layer_get_layer(s_scroll));
-  s_dots = dots_layer_create(GRect(0, b.size.h / 2 + 10, b.size.w, 30));
-  layer_add_child(root, s_dots);
+  s_dots = dots_layer_create(root, GRect(0, b.size.h / 2 + 10, b.size.w, 30));
   dots_layer_set_running(s_dots, true);
   relayout();
 #if INFO_TOUCH

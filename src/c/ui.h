@@ -106,7 +106,9 @@ void draw_fab(GContext *ctx, GPoint c, int r, IconId icon, GColor fill);
 
 // Loading dots (blue, red, yellow, green bouncing)
 typedef struct DotsLayer DotsLayer;
-Layer *dots_layer_create(GRect frame);
+Layer *dots_layer_create(Layer *parent, GRect frame);   // added to parent
+// A plain layer with an update proc, added to parent
+Layer *ui_layer_add(Layer *parent, GRect frame, LayerUpdateProc proc);
 void dots_layer_set_running(Layer *layer, bool running);
 void dots_layer_destroy(Layer *layer);
 

@@ -582,8 +582,7 @@ static void window_load(Window *window) {
   menu_layer_set_highlight_colors(lw->menu, C_BLUE, GColorWhite);
   menu_layer_set_click_config_onto_window(lw->menu, window);
   layer_add_child(root, menu_layer_get_layer(lw->menu));
-  lw->dots = dots_layer_create(GRect(0, b.size.h / 2 - 10, b.size.w, 30));
-  layer_add_child(root, lw->dots);
+  lw->dots = dots_layer_create(root, GRect(0, b.size.h / 2 - 10, b.size.w, 30));
 
   if (lw->kind == LW_MODES || lw->kind == LW_SETMODE) {
     fill_modes(lw);

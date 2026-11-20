@@ -170,11 +170,8 @@ static void touch_cb(const TouchEvent *e, void *ctx) {
 static void window_load(Window *window) {
   Layer *root = window_get_root_layer(window);
   GRect b = layer_get_bounds(root);
-  s_canvas = layer_create(b);
-  layer_set_update_proc(s_canvas, canvas_update);
-  layer_add_child(root, s_canvas);
-  s_dots = dots_layer_create(GRect(0, b.size.h - card_h(b) + 6, b.size.w - STRIP_W, 30));
-  layer_add_child(root, s_dots);
+  s_canvas = ui_layer_add(root, b, canvas_update);
+  s_dots = dots_layer_create(root, GRect(0, b.size.h - card_h(b) + 6, b.size.w - STRIP_W, 30));
   GSize mf = GSize(b.size.w - STRIP_W, b.size.h - card_h(b));
   mapbar_init(&s_bar, s_canvas, mf, ICON_NAV, ICON_NONE, bar_cb, NULL);
   s_bar.extra_up_color = C_BLUE;

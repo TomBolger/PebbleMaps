@@ -515,11 +515,8 @@ static void map_tap(GPoint p, void *ctx) {
 static void window_load(Window *window) {
   Layer *root = window_get_root_layer(window);
   GRect b = layer_get_bounds(root);
-  s_canvas = layer_create(b);
-  layer_set_update_proc(s_canvas, canvas_update);
-  layer_add_child(root, s_canvas);
-  s_dots = dots_layer_create(GRect(0, b.size.h / 2 - 20, b.size.w, 40));
-  layer_add_child(root, s_dots);
+  s_canvas = ui_layer_add(root, b, canvas_update);
+  s_dots = dots_layer_create(root, GRect(0, b.size.h / 2 - 20, b.size.w, 40));
   dots_layer_set_running(s_dots, true);
   if (persist_exists(PERSIST_FOLLOW)) s_follow = clampi(persist_read_int(PERSIST_FOLLOW), 0, FOLLOW_COUNT - 1);
   mapbar_init(&s_bar, s_canvas, b.size, ICON_NONE, ICON_NONE, bar_cb, NULL);

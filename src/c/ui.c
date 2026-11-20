@@ -695,13 +695,21 @@ static void dots_update(Layer *layer, GContext *ctx) {
   }
 }
 
-Layer *dots_layer_create(GRect frame) {
+Layer *ui_layer_add(Layer *parent, GRect frame, LayerUpdateProc proc) {
+  Layer *layer = layer_create(frame);
+  layer_set_update_proc(layer, proc);
+  layer_add_child(parent, layer);
+  return layer;
+}
+
+Layer *dots_layer_create(Layer *parent, GRect frame) {
   Layer *layer = layer_create_with_data(frame, sizeof(DotsData));
   DotsData *d = layer_get_data(layer);
   d->timer = NULL;
   d->phase = 0;
   d->running = false;
   layer_set_update_proc(layer, dots_update);
+  layer_add_child(parent, layer);
   return layer;
 }
 
