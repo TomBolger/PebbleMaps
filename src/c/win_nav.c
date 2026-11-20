@@ -204,8 +204,7 @@ static void draw_bottom(GContext *ctx, GRect b) {
   int h = bottom_h();
   GRect r = GRect(0, b.size.h - h, b.size.w, h);
   ui_fill_rect(ctx, C_BG, r, 0);
-  graphics_context_set_stroke_color(ctx, C_DIVIDER);
-  graphics_draw_line(ctx, r.origin, GPoint(b.size.w, r.origin.y));
+  ui_line(ctx, C_DIVIDER, r.origin, GPoint(b.size.w, r.origin.y));
   char clk[16] = "";
   if (s_arrive) format_clock(s_arrive, clk, sizeof(clk));
 #ifdef PBL_ROUND

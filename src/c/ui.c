@@ -132,6 +132,25 @@ void ui_fill_circle(GContext *ctx, GColor color, GPoint center, int radius) {
   graphics_fill_circle(ctx, center, radius);
 }
 
+void ui_outline_rect(GContext *ctx, GColor color, GRect box, int radius, int width) {
+  graphics_context_set_stroke_color(ctx, color);
+  graphics_context_set_stroke_width(ctx, width);
+  graphics_draw_round_rect(ctx, box, radius);
+  graphics_context_set_stroke_width(ctx, 1);
+}
+
+void ui_outline_circle(GContext *ctx, GColor color, GPoint center, int radius, int width) {
+  graphics_context_set_stroke_color(ctx, color);
+  graphics_context_set_stroke_width(ctx, width);
+  graphics_draw_circle(ctx, center, radius);
+  graphics_context_set_stroke_width(ctx, 1);
+}
+
+void ui_line(GContext *ctx, GColor color, GPoint a, GPoint b) {
+  graphics_context_set_stroke_color(ctx, color);
+  graphics_draw_line(ctx, a, b);
+}
+
 static int isqrt(int v) {
   if (v <= 0) return 0;
   int r = v, last;
@@ -320,9 +339,7 @@ void icon_draw(GContext *ctx, IconId id, GPoint c, int size, GColor fg, GColor b
     GPoint a = P(1, 9), b = P(39, 31);
     GRect r = GRect(a.x, a.y, b.x - a.x, b.y - a.y);
     ui_fill_rect(ctx, C_BG, r, r.size.h / 2);
-    graphics_context_set_stroke_color(ctx, fg);
-    graphics_context_set_stroke_width(ctx, 1);
-    graphics_draw_round_rect(ctx, r, r.size.h / 2);
+    ui_outline_rect(ctx, fg, r, r.size.h / 2, 1);
     graphics_context_set_fill_color(ctx, PBL_IF_COLOR_ELSE(GColorOrange, GColorBlack));
     circle(ctx, 11, 20, 5, true);
     graphics_context_set_text_color(ctx, fg);
@@ -511,9 +528,7 @@ void draw_pin(GContext *ctx, GPoint tip, int r, bool selected) {
 void draw_me_dot(GContext *ctx, GPoint c, int r) {
 #ifdef PBL_COLOR
   graphics_context_set_antialiased(ctx, true);
-  graphics_context_set_stroke_color(ctx, C_BLUE_LT);
-  graphics_context_set_stroke_width(ctx, 1);
-  graphics_draw_circle(ctx, c, r * 3);
+  ui_outline_circle(ctx, C_BLUE_LT, c, r * 3, 1);
 #endif
   ui_fill_circle(ctx, PBL_IF_COLOR_ELSE(GColorWhite, GColorBlack), c, r + 2);
   ui_fill_circle(ctx, PBL_IF_COLOR_ELSE(C_BLUE, GColorWhite), c, r);
@@ -576,9 +591,7 @@ GRect poi_label_rect(GPoint c, const char *name, bool left) {
 
 void draw_poi_label(GContext *ctx, GPoint c, int cat, const char *name, GRect pill) {
   ui_fill_rect(ctx, C_BG, pill, pill.size.h / 2);
-  graphics_context_set_stroke_color(ctx, C_DIVIDER);
-  graphics_context_set_stroke_width(ctx, 1);
-  graphics_draw_round_rect(ctx, pill, pill.size.h / 2);
+  ui_outline_rect(ctx, C_DIVIDER, pill, pill.size.h / 2, 1);
   int r = g_fonts.level >= 1 ? 5 : 4;
   ui_fill_circle(ctx, poi_color(cat), c, r);
   graphics_context_set_text_color(ctx, C_TEXT);
@@ -594,9 +607,7 @@ void draw_compass(GContext *ctx, GPoint cc, int map_heading) {
   graphics_context_set_antialiased(ctx, true);
 #endif
   ui_fill_circle(ctx, C_BG, cc, 11);
-  graphics_context_set_stroke_color(ctx, C_DIVIDER);
-  graphics_context_set_stroke_width(ctx, 1);
-  graphics_draw_circle(ctx, cc, 11);
+  ui_outline_circle(ctx, C_DIVIDER, cc, 11, 1);
   int32_t a = DEG_TO_TRIGANGLE(-map_heading);
   int sx = sin_lookup(a) * 8 / TRIG_MAX_RATIO, sy = -cos_lookup(a) * 8 / TRIG_MAX_RATIO;
   int px = cos_lookup(a) * 3 / TRIG_MAX_RATIO, py = sin_lookup(a) * 3 / TRIG_MAX_RATIO;
@@ -619,9 +630,7 @@ void draw_fab(GContext *ctx, GPoint c, int r, IconId icon, GColor fill) {
 
 void draw_card(GContext *ctx, GRect r, int radius) {
   ui_fill_rect(ctx, C_BG, r, radius);
-  graphics_context_set_stroke_color(ctx, C_DIVIDER);
-  graphics_context_set_stroke_width(ctx, 1);
-  graphics_draw_round_rect(ctx, r, radius);
+  ui_outline_rect(ctx, C_DIVIDER, r, radius, 1);
 }
 
 void draw_map_placeholder(GContext *ctx, GRect r) {
@@ -734,9 +743,7 @@ static void strip_dots(GContext *ctx, int cx, int y, int page, int pages) {
     if (i == page) {
       ui_fill_circle(ctx, C_BLUE, d, 2);
     } else {
-      graphics_context_set_stroke_color(ctx, C_HINT);
-      graphics_context_set_stroke_width(ctx, 1);
-      graphics_draw_circle(ctx, d, 2);
+      ui_outline_circle(ctx, C_HINT, d, 2, 1);
     }
   }
 }
@@ -748,15 +755,13 @@ void draw_action_strip(GContext *ctx, GRect bounds, const StripIcons *ic) {
 #ifdef PBL_ROUND
   int R = bounds.size.h;
   ui_fill_circle(ctx, C_BG, GPoint(bounds.size.w - w + R, bounds.size.h / 2), R);
-  graphics_context_set_stroke_color(ctx, C_DIVIDER);
-  graphics_draw_circle(ctx, GPoint(bounds.size.w - w + R, bounds.size.h / 2), R);
+  ui_outline_circle(ctx, C_DIVIDER, GPoint(bounds.size.w - w + R, bounds.size.h / 2), R, 1);
   cx = bounds.size.w - w / 2 - 4;
   int dy = bounds.size.h / 4;
 #else
   GRect strip = GRect(bounds.size.w - w, 0, w, bounds.size.h);
   ui_fill_rect(ctx, C_BG, strip, 0);
-  graphics_context_set_stroke_color(ctx, C_DIVIDER);
-  graphics_draw_line(ctx, GPoint(strip.origin.x, 0), GPoint(strip.origin.x, bounds.size.h));
+  ui_line(ctx, C_DIVIDER, GPoint(strip.origin.x, 0), GPoint(strip.origin.x, bounds.size.h));
   cx = strip.origin.x + w / 2;
   int dy = bounds.size.h / 2 - 26;
   if (dy > 70) dy = 70;
@@ -877,7 +882,6 @@ int16_t ui_separator_h(MenuLayer *menu, MenuIndex *index, void *ctx) {
 void ui_draw_separator(GContext *ctx, const Layer *cell, MenuIndex *index, void *cb) {
   GRect b = layer_get_bounds(cell);
   ui_fill_rect(ctx, C_BG, b, 0);
-  graphics_context_set_stroke_color(ctx, C_DIVIDER);
   int inset = PBL_IF_ROUND_ELSE(24, 6);
-  graphics_draw_line(ctx, GPoint(inset, SEP_PAD), GPoint(b.size.w - inset, SEP_PAD));
+  ui_line(ctx, C_DIVIDER, GPoint(inset, SEP_PAD), GPoint(b.size.w - inset, SEP_PAD));
 }

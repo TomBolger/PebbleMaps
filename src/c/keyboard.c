@@ -452,8 +452,7 @@ static void draw_suggestions(GContext *ctx, GRect b) {
     ui_text_c(ctx, hl ? GColorWhite : C_TEXT, s_sugg[i].title, tf, GRect(tx, r.origin.y - 1, r.origin.x + r.size.w - tx - pad, 22), GTextAlignmentLeft | TXT_ELLIPSIS);
     ui_text_c(ctx, hl ? GColorWhite : C_HINT, s_sugg[i].sub, sf, GRect(tx, r.origin.y + 17, r.origin.x + r.size.w - tx - pad, 18), GTextAlignmentLeft | TXT_ELLIPSIS);
     if (i < n - 1) {
-      graphics_context_set_stroke_color(ctx, C_DIVIDER);
-      graphics_draw_line(ctx, GPoint(tx, r.origin.y + r.size.h - 1), GPoint(r.origin.x + r.size.w - pad, r.origin.y + r.size.h - 1));
+      ui_line(ctx, C_DIVIDER, GPoint(tx, r.origin.y + r.size.h - 1), GPoint(r.origin.x + r.size.w - pad, r.origin.y + r.size.h - 1));
     }
   }
 }
@@ -461,10 +460,7 @@ static void draw_suggestions(GContext *ctx, GRect b) {
 static void draw_bar(GContext *ctx, GRect b) {
   GRect br = bar_rect(b);
   draw_card(ctx, br, br.size.h / 2);
-  graphics_context_set_stroke_color(ctx, C_BLUE);
-  graphics_context_set_stroke_width(ctx, 2);
-  graphics_draw_round_rect(ctx, grect_inset(br, GEdgeInsets(1)), br.size.h / 2 - 1);
-  graphics_context_set_stroke_width(ctx, 1);
+  ui_outline_rect(ctx, C_BLUE, grect_inset(br, GEdgeInsets(1)), br.size.h / 2 - 1, 2);
   icon_draw(ctx, ICON_SEARCH, GPoint(br.origin.x + 13, br.origin.y + br.size.h / 2), 13, C_TEXT, C_BG);
   GFont tf = g_fonts.small_b;
   GRect tr = GRect(br.origin.x + 24, br.origin.y + (br.size.h - g_fonts.small_h) / 2 - 3, br.size.w - 34, g_fonts.small_h + 4);

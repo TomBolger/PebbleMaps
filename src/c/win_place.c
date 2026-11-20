@@ -62,8 +62,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   int w = b.size.w - STRIP_W;
   map_draw(ctx, GRect(0, 0, w, mh), -1);
   ui_fill_rect(ctx, C_BG, GRect(0, mh, w, b.size.h - mh), 0);
-  graphics_context_set_stroke_color(ctx, C_DIVIDER);
-  graphics_draw_line(ctx, GPoint(0, mh), GPoint(w, mh));
+  ui_line(ctx, C_DIVIDER, GPoint(0, mh), GPoint(w, mh));
 
   int pad = PBL_IF_ROUND_ELSE(18, 5);
   int x = pad, tw = w - pad - 3;

@@ -146,6 +146,11 @@ bool ui_toast_active(void);
 // Fill a (rounded) rectangle in one colour
 void ui_fill_rect(GContext *ctx, GColor color, GRect box, int radius);
 
+// Outlines and lines in one colour (stroke width back to 1 afterwards)
+void ui_outline_rect(GContext *ctx, GColor color, GRect box, int radius, int width);
+void ui_outline_circle(GContext *ctx, GColor color, GPoint center, int radius, int width);
+void ui_line(GContext *ctx, GColor color, GPoint a, GPoint b);
+
 // Fill a circle in one colour
 void ui_fill_circle(GContext *ctx, GColor color, GPoint center, int radius);
 

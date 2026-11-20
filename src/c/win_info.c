@@ -65,8 +65,7 @@ static void stars(GContext *ctx, int x, int y, int sz, int rating10) {
 
 static int divider(GContext *ctx, int y, int w) {
   if (ctx) {
-    graphics_context_set_stroke_color(ctx, C_DIVIDER);
-    graphics_draw_line(ctx, GPoint(PBL_IF_ROUND_ELSE(30, 0), y + 4), GPoint(w - PBL_IF_ROUND_ELSE(30, 0), y + 4));
+    ui_line(ctx, C_DIVIDER, GPoint(PBL_IF_ROUND_ELSE(30, 0), y + 4), GPoint(w - PBL_IF_ROUND_ELSE(30, 0), y + 4));
   }
   return 9;
 }
@@ -154,10 +153,7 @@ static int layout(GContext *ctx, GRect b) {
     bool focus = dir_focused();
     ui_fill_rect(ctx, focus ? C_BLUE_DARK : C_BLUE, s_dir_btn, bh / 2);
     if (focus) {
-      graphics_context_set_stroke_color(ctx, GColorWhite);
-      graphics_context_set_stroke_width(ctx, 2);
-      graphics_draw_round_rect(ctx, grect_inset(s_dir_btn, GEdgeInsets(2)), bh / 2 - 2);
-      graphics_context_set_stroke_width(ctx, 1);
+      ui_outline_rect(ctx, GColorWhite, grect_inset(s_dir_btn, GEdgeInsets(2)), bh / 2 - 2, 2);
     }
     const char *label = "Directions";
     GFont f = g_fonts.small_b;

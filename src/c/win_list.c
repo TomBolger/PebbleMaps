@@ -202,8 +202,7 @@ static void draw_switch(GContext *ctx, GPoint c, bool on, bool hl, bool dim) {
   GColor track = on ? (hl ? GColorWhite : (dim ? PBL_IF_COLOR_ELSE(C_DIVIDER, C_BLUE) : C_BLUE))
                     : PBL_IF_COLOR_ELSE(C_DIVIDER, GColorWhite);
   ui_fill_rect(ctx, track, r, 7);
-  graphics_context_set_stroke_color(ctx, hl ? GColorWhite : C_DIVIDER);
-  graphics_draw_round_rect(ctx, r, 7);
+  ui_outline_rect(ctx, hl ? GColorWhite : C_DIVIDER, r, 7, 1);
   ui_fill_circle(ctx, on ? (hl ? blue : GColorWhite) : (hl ? blue : PBL_IF_COLOR_ELSE(dim ? GColorDarkGray : C_TEXT, GColorBlack)), GPoint(on ? r.origin.x + 17 : r.origin.x + 7, c.y), 4);
 }
 

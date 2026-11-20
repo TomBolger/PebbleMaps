@@ -886,10 +886,7 @@ void map_draw(GContext *ctx, GRect frame, int selected) {
         else if (mk->kind == MK_ARROW) draw_puck(ctx, p, g_fonts.level >= 1 ? 7 : 6, mk->index * 2);
         else {
           ui_fill_circle(ctx, GColorWhite, p, 6);
-          graphics_context_set_stroke_color(ctx, GColorBlack);
-          graphics_context_set_stroke_width(ctx, 2);
-          graphics_draw_circle(ctx, p, 5);
-          graphics_context_set_stroke_width(ctx, 1);
+          ui_outline_circle(ctx, GColorBlack, p, 5, 2);
         }
       } else if (pass == 2 && ((mk->kind == MK_PIN && !is_sel) || mk->kind == MK_DEST)) {
         draw_pin(ctx, p, mk->kind == MK_DEST ? 7 : 5, mk->kind == MK_DEST);

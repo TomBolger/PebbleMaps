@@ -66,8 +66,7 @@ static void canvas_update(Layer *layer, GContext *ctx) {
   map_draw(ctx, GRect(0, 0, w, b.size.h - ch), -1);
   GRect card = GRect(0, b.size.h - ch, w, ch);
   ui_fill_rect(ctx, C_BG, card, 0);
-  graphics_context_set_stroke_color(ctx, C_DIVIDER);
-  graphics_draw_line(ctx, card.origin, GPoint(w, card.origin.y));
+  ui_line(ctx, C_DIVIDER, card.origin, GPoint(w, card.origin.y));
 
   int pad = PBL_IF_ROUND_ELSE(22, 5);
   GTextAlignment al = PBL_IF_ROUND_ELSE(GTextAlignmentCenter, GTextAlignmentLeft);
