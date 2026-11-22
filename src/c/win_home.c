@@ -22,6 +22,7 @@ static AppTimer *s_gear_timer;
 enum { FOLLOW_DRIVE = 0, FOLLOW_NORTH, FOLLOW_OFF, FOLLOW_COUNT };
 static int s_follow = FOLLOW_DRIVE;
 #define PERSIST_FOLLOW 8
+static GPoint s_compass;   // where the compass is (only while the map is turned); tap it for north up
 static IconId follow_icon(void);
 static void touch_cb(const TouchEvent *e, void *ctx);
 
@@ -238,9 +239,18 @@ static void canvas_update(Layer *layer, GContext *ctx) {
 #endif
 
   // Heading up (map turned to your direction): a compass shows where north is
+  // top left, under the search bar; on round screens just inside the edge of the circle
+  s_compass = GPoint(0, 0);
   if (g_map.bmp && g_map.rheading) {
-    int cy = g_app.buttons_ui ? PBL_IF_ROUND_ELSE(b.size.h / 9 + 6, 16) : PBL_IF_ROUND_ELSE(b.size.h / 9 + g_fonts.small_h + 26, g_fonts.small_h + 34);
-    draw_compass(ctx, GPoint(PBL_IF_ROUND_ELSE(vw / 2 + 10, 18), cy), g_map.rheading);
+    int cy = g_app.buttons_ui ? PBL_IF_ROUND_ELSE(b.size.h / 9 + 14, 16) : PBL_IF_ROUND_ELSE(b.size.h / 9 + g_fonts.small_h + 26, g_fonts.small_h + 34);
+    int cx = 18;
+#ifdef PBL_ROUND
+    int rad = b.size.w / 2, dy = rad - cy, half = 0;
+    while ((half + 1) * (half + 1) + dy * dy <= rad * rad) half++;
+    cx = rad - half + 20;
+#endif
+    s_compass = GPoint(cx, cy);
+    draw_compass(ctx, s_compass, g_map.rheading);
   }
 
   // Status bubble
@@ -361,8 +371,8 @@ static IconId follow_icon(void) {
 }
 
 // Heading up -> north up -> plain map -> ...; every change also brings the map back to you
-static void cycle_follow(void) {
-  s_follow = (s_follow + 1) % FOLLOW_COUNT;
+static void set_follow(int f) {
+  s_follow = f;
   persist_write_int(PERSIST_FOLLOW, s_follow);
   OutMsg m;
   comm_msg_init(&m, CMD_FOLLOW_MODE);
@@ -371,6 +381,7 @@ static void cycle_follow(void) {
   comm_send(&m);
   ui_toast(s_window, s_follow == FOLLOW_DRIVE ? "Heading up" : (s_follow == FOLLOW_NORTH ? "Follow me, north up" : "Map only"));
 }
+static void cycle_follow(void) { set_follow((s_follow + 1) % FOLLOW_COUNT); }
 
 static void bar_cb(MapBarEvent ev, void *ctx) {
   activity();
@@ -487,6 +498,11 @@ static void touch_cb(const TouchEvent *e, void *ctx) {
 
 static void map_tap(GPoint p, void *ctx) {
   if (!g_app.configured) { show_setup(); return; }
+  // the compass (shown while the map turns with you): back to north up, like Google Maps
+  if (s_compass.x && !s_bar.open) {
+    int dx = p.x - s_compass.x, dy = p.y - s_compass.y;
+    if (dx * dx + dy * dy <= 20 * 20) { set_follow(FOLLOW_NORTH); return; }
+  }
   // the search bar (only its round button on the left when it's tucked away)
   bool in_pill = !s_bar.open && !g_app.buttons_ui && p.y < g_fonts.small_h + 20 + PBL_IF_ROUND_ELSE(24, 0) &&
                  (!s_pc_target || p.x < PBL_IF_ROUND_ELSE(90, 44));
